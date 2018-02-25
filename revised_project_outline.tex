@@ -1,0 +1,91 @@
+\documentclass{article}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{amsmath}
+
+\begin{document}
+
+\section{Introduction}
+
+\subsection*{Goal}
+The goal of this project is to test for autocorrelations in stock returns, which persist for economically meaningful short-term timespans but are not, on average, significantly different from zero in the long term. A rejection of the null hypothesis under such tests would establish evidence against the random walk hypothesis; that is, that past returns are not independent of future returns in some short-run contexts. Such a finding would have clear implications for trading strategy.
+
+\subsection*{Motivation and hypotheses}
+The motivation for this project is to expand upon previous tests of the random-walk hypothesis, which have found autocorrelations of stock returns to be on average zero. I hypothesize that this is the case, but that there are periods in the time series of returns ("bubbles") in which returns do in fact exhibit significant autocorrelation (either positive, when a bubble is increasing, or negative, when a bubble "bursts").
+
+\subsection*{Idea}
+Test the random walk hypothesis (i.e. \(\mathrm{E}(r_{t+1} | r_{t}) = \mathrm{E}(r_{t+1})\)) using a time-varying coefficient model
+\newline
+\begin{center}\(r_{i,t} = X_{t}\beta_{i,t} + {{R_{i,t}}^{(p)}}' {\Phi_{i,t}}^{(p)} + \epsilon_{i,t}\)\end{center}
+
+where:
+\begin{itemize}
+	\item{\(r_{i,t}\) is the return for asset \(i\) in time \(t\)}
+	\item{\(X_{t} = \begin{bmatrix}{X_{t}}^{(0)}&...&{X_{t}}^{(k)}\end{bmatrix}\) is a vector of common factors at time \(t\) (i.e. Fama-French portfolio factors) and a constant term}
+	\item{\(\beta_{i,t} = \begin{bmatrix}{\beta_{t}}^{(0)}&...&{\beta_{t}}^{(k)}\end{bmatrix}'\) is a vector of time-varying coefficients at \(t\)}
+	\item{\(R_{i,t} = \begin{bmatrix}r_{i,t-1}&...&r_{i,t-p}\end{bmatrix}'\) is a vector of lagged returns for asset \(i\) at time \(t\)}
+	\item{\({\Phi_{i,t}}^{(p)} = \begin{bmatrix}{\phi_{i,t}}^{(1)}&...&{\phi_{i,t}}^{(p)}\end{bmatrix}'\) is a vector of time-varying AR coefficients at \(t\)}
+	\item{\(\epsilon_{i,t}\) is a stochastic error term for which we assume mean zero and constant conditional variance.\footnote{These assumptions are not crucial to inference. If the constant variance assumption is loosened, the residual bootstrap procedures will be adjusted to sample from the set of standardized residuals, rather than the set of centered residuals.}}
+\end{itemize}
+
+\noindent
+If the random walk hypothesis holds, then \({\Phi_{i,t}}^{(p)} = 0\) for all assets i over all times t. However, if there are time periods in which this hypothesis does not hold, we should see that at least one component of  \({\Phi_{i,t}}^{(p)}\) is significantly different from zero. The project proposes to use a local linear estimation method such as that of Ang and Kristensen (2011); and bootstrap methods presented by Chen, Gao, Li, and Silvapulle (2018); McKinnon (2007); and Lee and Ullah (2001) to derive confidence intervals and bands, and test statistics, for these coefficients. This will allow for statistical inference on whether or not  \({\Phi_{i,t}}^{(p)}\)  is significantly different from zero at certain values of \(t\). It will be of particular interest whether this relationship holds significantly during periods classified ex post as asset pricing bubbles.
+
+\section{Methodology}
+
+\subsection*{Estimation method}
+This project proposes to use the local linear regression method of Ang and Kristensen (2011) to estimate time-varying \(\beta_{i,t}\) and  \({\Phi_{i,t}}^{(p)}\) using daily returns data from the 30 industry portfolios from Ken French as individual assets over the 36-year period from 1/1980 - 12/2016. For each asset \(k\) at each time \(t\) in this span, we estimate \(\beta_{i,t}\) and  \({\Phi_{i,t}}^{(p)}\)  by minimizing the weighted sum of squares 
+\newline
+\begin{center}\(\Sigma_{i \in 1...T} K_{hT}(t_{i} - t) (R_{k,i} - (X_{t}\beta_{i,t} + {{R_{i,t}}^{(p)}}' {\Phi_{i,t}}^{(p)}))^{2}\)\end{center}
+where \(K_{hT}(z) = K(\frac{\frac{z}{hT}}{hT})\), \(K(.)\) is a kernel and \(h\) is a bandwidth. The optimal estimators are given by 
+\newline
+\begin{center}\({\begin{bmatrix}\beta_{i,t} &{\Phi_{i,t}}^{(p)}\end{bmatrix}}' = ({V_{k}}'W_{hT}V_{k})^{-1}(V_{k}'W_{hT}R_{k})\)\end{center}
+where \(V_{k}\) is the matrix holding values for \(X_{t}\)  and \(R_{k,t}\) in all \(t\), and \(W_{hT}\) is the \(n\)-dimensional diagonal matrix of kernel weights.
+
+\subsection*{Bootstrap inference procedures}
+
+\subsubsection{Pointwise confidence bands}
+This project proposes to use the bootstrap procedure outlined in Chen, Gao, Li, and Silvapulle (2018) to create approximate pointwise confidence intervals for each/any of the estimated \({{\hat{\Phi}}_{i,t}}^{(p)}\). The procedure yields pointwise intervals in the form \({{\hat{\phi}}_{i,t}}^{(j)} \pm \hat{c}_{\frac{\alpha}{2}}(t) \hat{sd}({{\hat{\phi}}_{i,t}}^{(j)})\) as follows (note that the below assumes a single asset, so we drop the subscript \(k\)):
+\renewcommand{\theenumi}{\Roman{enumi}}
+\begin{enumerate}
+	\item{Estimate \({{\hat{\phi}}_{i,t}}^{(j)}\) for all \(t\) using the local linear method described above. Obtain the estimated residual \(\hat{\epsilon}_{t}\) for each t using these coefficient estimates, and create the set of centered residuals \(\tilde{\epsilon}_{t} = \hat{\epsilon}_{t} - \bar{\hat{\epsilon}}\).}
+	\item{Resample \( \{ {\epsilon_{t}}^{*} \} \) with replacement from the set of centered residuals \(\tilde{\epsilon}_{t}\). Using these residuals, generate \({r_{t}}^{*} =  X_{t}\hat{\beta}_{t} + {{R_{t}}^{(p)}}' {\hat{\Phi}_{t}}^{(p)} + \tilde{\epsilon}_{t}\) recursively. That is, start with independent variables at some \(t = 0\), and then use each subsequent \({r_{t}}^{*}\) as the lagged return(s) in \({r_{t+1}}^{*}\).}
+	\item{Use \( \{ ({r_{t}}^{*}, V_{t})\}\) to estimate \({{\hat{\phi}}_{i,t}}^{(j)}\) for all \(t = 1 ... n\).}
+	\item{Repeat steps II and III B times to obtain B bootstrap estimates \({{\hat{\phi}}_{i,t}}^{(j)*}\) at each \(t = 1 ... n\).}
+	\item{Estimate \(\hat{sd}({{\hat{\phi}}_{i,t}}^{(j)})\) as the sample standard deviation of the B bootstrap estimates at each \(t\).\footnote{Note that this can be obtained as the square root of the \(j^{th}\) diagonal entry in the covariance matrix of \({\begin{bmatrix}\beta_{i,t} &{\Phi_{i,t}}^{(p)}\end{bmatrix}}' \). This matrix can be estimated using the formula on page 8 of MacKinnon (2007).} }
+	\item{Compute \({Q_{j,t}}^{*} = \frac{({{\hat{\phi}}_{i,t}}^{(j)*} - {{\hat{\phi}}_{i,t}}^{(j)})}{\hat{sd}({{\hat{\phi}}_{i,t}}^{(j)})} \) for each of B bootstrap replications. Obtain \(\hat{c}_{\frac{\alpha}{2}}(t)\) as the upper \(\frac{\alpha}{2}\) percentile of the empirical distribution.} 
+\end{enumerate}
+
+
+\noindent
+Plots of these confidence bands will be produced for each of the 30 assets. It will be of interest whether we see confidence intervals for the autoregressive coefficients which don't include zero during periods classified ex post as asset pricing bubbles.
+
+\subsubsection{Simultaneous confidence bands}
+This project proposes to extend the confidence bounds in the above subsection by applying a size adjustment as described in MacKinnon (2007). (For example, a Bonferroni adjustment.) Using the same procedure as described above, we would define the upper and lower bounds for each \( {{\hat{\phi}}_{i,t}}^{(j)} \) on the time interval \(t_{1}\) to \(t_{2}\) by using the \(\hat{c}_{\frac{\alpha'}{2}}(t)\) percentile, where \(\alpha'\) is adjusted for the size of the time interval, i.e. \(t_{2} - t_{1}\).
+
+\subsubsection{Hypothesis tests}
+This project proposes to apply the bootstrap hypothesis testing procedure proposed in Lee and Ullah (2001) to test a set of null and alternative model specifications. These different specifications will be primarily concerned with the time-varying and non-zero nature of the autoregressive coefficients. The procedure for this test is as follows:
+\renewcommand{\theenumi}{\Roman{enumi}}
+\begin{enumerate}
+	\item{Estimate time varying coefficients \({\begin{bmatrix}\beta_{i,t} &{\Phi_{i,t}}^{(p)}\end{bmatrix}}' \) for all \(t\) using the local linear regression described above.}
+	\item{Estimate the factor (and, if specified, autoregressive) coefficients in some restricted model. (For example, all coefficients are time-invariant; or all autoregressive coefficients are equal to zero).}
+	\item{Calculate test statistic \(\hat{\tau} = \frac{(RSS_{restricted} - RSS_{unrestricted})}{RSS_{unrestricted}}\), which compares the RSS from the model in I (unrestricted) to the RSS from the model in II (restricted).}
+	\item{Generate B bootstrap samples under the restricted model, using the error bootstrap procedure described in the pointwise confidence bands section. (That is, generate the estimated residuals from the restricted model in II, and resample from these with replacement B times to recursively build B bootstrap datasets.) Use each of these B datasets, generated under the null, to estimate \({\tau_{i}}^{*} = \frac{(RSS_{restricted} - RSS_{bootstrap_{i}})}{RSS_{bootstrap_{i}}}\).}
+	\item{Step IV gives us a distribution of the test statistic under the null hypothesis. The p-value for the test is then given by \( p = \frac{1}{B} \Sigma I({\tau_{i}}^{*} >  \hat{\tau}) \).}
+\end{enumerate}
+\noindent
+This procedure can be modified to test a hypothesis that some coefficients are equal to zero by using this parameter-restricted model as the null.
+\newline
+\newline
+This project proposes to apply a second test procedure from Lee and Ullah (2001) which compares the fitted values for the coefficients under the null and alternative model specifications. This test follows the procedure described above, but calculates the test statistic \(\hat{Q} = \frac{1}{n} \Sigma ({\tilde{\Phi}_{i}}^{(p)} - {\hat{\Phi}_{i}}^{(p)} )\) where \({\tilde{\Phi}_{i}}^{(p)}\) is the vector of autoregressive coefficients under the null and \({\hat{\Phi}_{i}}^{(p)} \) is the vector of autoregressive coefficients under the unrestricted alternative (i.e. the time-varying case). We calculate a p-value by comparing this test statistic to the empirical distribution of \(Q^{*} = \frac{1}{n} \Sigma ({\tilde{\Phi}_{i}}^{(p)} - {{{\Phi}^{*}}_{i}}^{(p)} )\). Here the \({{{\Phi}^{*}}_{i}}^{(p)}\) are estimated for B bootstrap replications, with the dataset for each replication generated as described above.
+
+\subsection*{References}
+
+\renewcommand{\theenumi}{\Roman{enumi}}
+\begin{itemize}
+	\item{Ang, Andrew, and Kristensen, Dennis, Testing Conditional Factor Models, National Bureau of Economic Research, Working Paper 17561, 2011, http:\//www.nber.org\/papers\/w17561.pdf}
+	\item{Xiangjin B. Chen, Jiti Gao, Degui Li and Param Silvapulle (2018) Nonparametric Estimation and Forecasting for Time-Varying Coefficient Realized Volatility Models, Journal of Business ans Economic Statistics, 36:1, 88-100, DOI: 10.1080/07350015.2016.1138118}
+	\item{MacKinnon, James G; Bootstrap Hypothesis Testing, Department of Economics, Queen's University, 2007, http:\//qed.econ.queensu.ca\/working\_papers\/papers\/qed\_wp\_1127.pdf }
+	\item{Lee, Tae-Hwy, and Ullah, Aman, Nonparametric Bootstrap Specification Testing in Economic Models, 2001, http:\//www.faculty.ucr.edu\/taelee\/paper\/giles.pdf}
+\end{itemize}
+
+\end{document}
