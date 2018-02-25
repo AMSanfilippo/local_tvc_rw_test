@@ -1,6 +1,3 @@
-# local_tvc_rw_test
-Estimate a time-varying coefficient model to test implications of the random walk hypothesis.
-
 INTRODUCTION:
 
 The goal of this project is to test for autocorrelations in stock returns, which persist for economically meaningful short-term timespans but are not, on average, significantly different from zero in the long term. A rejection of the null hypothesis under such tests would establish evidence against the random walk hypothesis; that is, that past returns are not independent of future returns in some short-run contexts. Such a finding would have clear implications for trading strategy.
@@ -15,6 +12,9 @@ The datasets used in this project were obtained from Ken French's website, http:
 REFERENCES:
 
 • Ang, Andrew, and Kristensen, Dennis, Testing Conditional Factor Models, National Bureau of Eco- nomic Research, Working Paper 17561, 2011, http:/www.nber.orgpapersw17561.pdf
+
 • Xiangjin B. Chen, Jiti Gao, Degui Li and Param Silvapulle (2018) Nonparametric Estimation and Forecasting for Time-Varying Coefficient Realized Volatility Models, Journal of Business ans Economic Statistics, 36:1, 88-100, DOI: 10.1080/07350015.2016.1138118
+
 • MacKinnon, James G; Bootstrap Hypothesis Testing, Department of Economics, Queen’s University, 2007, http:/qed.econ.queensu.caworking paperspapersqed wp 1127.pdf
+
 • Lee, Tae-Hwy, and Ullah, Aman, Nonparametric Bootstrap Specification Testing in Economic Models, 2001, http:/www.faculty.ucr.edutaeleepapergiles.pdf
