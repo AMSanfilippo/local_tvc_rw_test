@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
+import multiprocessing
 
 from clean_data import *
 
@@ -55,53 +57,58 @@ kernels = {
 # target: target time on [1...n], passed as implicit index starting at 0
 # h: bandwidth (proportion on [0,1])
 def wls(X,Y,target,h,wt_fxn):
-
+    print(target)
     W = np.diag(kernels[wt_fxn](target,h,list(range(len(Y))))) # diagonal matrix of weights
     # B_hat = inv(X'WX) * (X'WY)
     B_hat = np.linalg.inv(X.T*W*X)*(X.T*W*Y) 
     # get residuals
     resids = Y - (X*B_hat)
     # return coefficient estimates and residuals
-    return [B_hat,resids]
+    return B_hat.flatten().tolist()[0]
 
-
-# rolling kernel-weighted regression
-def rolling_regression(X,Y,h,wt_fxn):
-
-    # keep track of (time-varying) coefficient estimates and estimators for asymptotic variance
-    coeffs = pd.DataFrame()
-    # resids = [] 
-
-    n = len(Y)
-    start = math.floor((h*n)/2)
-    end = n - start
-
-    # run weighted local regression 
-    for target in list(range(len(Y)))[start:end]: # center window around target value. use implicit index starting at 0
-        print(target)
-        # run wls, centering weights at target observation
-        resp = wls(X,Y,target,h,wt_fxn) # run wls regression. return coefficient estimates and estimators
-        
-        coeff_sub = pd.DataFrame([resp[0].flatten().tolist()[0]])
-        coeffs = coeffs.append(coeff_sub)
-
-        #resids.append(resp[1].flatten().tolist()[0]) 
-
-    return coeffs
-    #return [coeffs,resids,Ws] 
 
 ###############################################################################
 
-data = clean_data('19800101','20161230')
+numcores = multiprocessing.cpu_count()
+
+data = clean_data('19940101','20031230')
+
+asset = 'Telcm'
 
 # test CAPM specification, assuming lag-one AR in returns
-asset = 'NoDur'
+X_test = gen_X(data,asset,'CAPM')
+Y_test = (np.matrix(data.loc[1:,asset].values).T)
 
-X = gen_X(data,asset,'CAPM')
-Y = np.matrix(data.loc[1:,asset].values).T
+n = len(Y_test)
+h_test = 0.1
+start = math.floor((h*n)/2)
+end = n - start
 
-reg_out = rolling_regression(X,Y,0.2,'uniform')
+datelist_test = list(range(len(Y_test)))[start:end]
 
-# This works, BUT IT RUNS SUPER SLOWLY.
-# It can't even get through all 9000+ data points. This will certainly NOT work for bootstrapping.
-# Need to figure out some way to run this faster (in parallel?)
+# run for loop in parallel
+# with 8 cores and about 10 years of data, this runs in ~ 25 secs
+# --> 500 bs replications should take ~ 35 mins
+results = Parallel(n_jobs=numcores)(delayed(wls)(X=X_test,Y=Y_test,target=date,h=h_test,wt_fxn='uniform') for date in datelist_test)
+
+coeff_results_df = pd.DataFrame(results)
+coeff_results_df.columns = ['const','rm_rf','r_1']
+
+
+# plot fitted values
+fit_const = [a*b for a,b in zip(X_test[start:end,0].flatten().tolist()[0],coeff_results_df['const'].values)]
+fit_rmrf = [a*b for a,b in zip(X_test[start:end,1].flatten().tolist()[0],coeff_results_df['rm_rf'].values)] 
+fit_r_1 = [a*b for a,b in zip(X_test[start:end,2].flatten().tolist()[0],coeff_results_df['r_1'].values)]
+
+fitted = [a+b+c for a,b,c in zip(fit_const,fit_rmrf,fit_r_1)]
+
+x = range(1,len(datelist_test)+1)
+
+fig, ax = plt.subplots()
+
+line1, = ax.plot(x[:100], fitted[:100], dashes = [5,5], linewidth=2,color='b',label='fitted')
+line2, = ax.plot(x[:100], Y_test[start:start+100], linewidth=2,color='r')
+
+plt.show()
+
+
