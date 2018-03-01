@@ -58,10 +58,11 @@ def clean_data(start_date,end_date):
 def gen_X(data,asset,factor_model):
     
     # constant and portfolio factors 
-    factors = np.vstack([[1]*(len(data)-1),data.loc[:len(data)-2,'Mkt-RF'].values])
+    factors = np.vstack([[1]*(len(data)-1),data.loc[1:,'Mkt-RF'].values])
     if factor_model == 'FF3':
-        factors = np.vstack([factors,data.loc[:len(data)-2,'SMB'].values,data.loc[:len(data)-2,'HML'].values])
+        factors = np.vstack([factors,data.loc[1:,'SMB'].values,data.loc[1:,'HML'].values])
 
+    # lag-one return 
     X = np.vstack([factors,data.loc[:len(data)-2,asset].values])
     
     # make matrix and return

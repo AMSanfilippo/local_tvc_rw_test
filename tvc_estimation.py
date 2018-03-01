@@ -14,6 +14,7 @@ from joblib import Parallel, delayed
 import multiprocessing
 
 from clean_data import *
+from residual_bootstrap import *
 
 """
 # Attempt at gauss kernel, the results makes no sense
@@ -32,7 +33,7 @@ for t in times[1:99]:
     print(sum(testwts))
 """
 
-# symmetric uniform weights until Gauss kernel is fixed
+# symmetric uniform weights (until Gauss kernel is fixed)
 # t: target time, passed as implicit index starting at 0
 # h: bandwidth (proportion on [0,1])
 # times: list of t on [1...n]
@@ -51,7 +52,7 @@ kernels = {
 }
 
 
-# function to perform WLS regression
+# WLS regression
 # X: independent variable matrix with column of 1s for intercept
 # Y: dependent variable matrix
 # target: target time on [1...n], passed as implicit index starting at 0
@@ -76,39 +77,53 @@ data = clean_data('19940101','20031230')
 asset = 'Telcm'
 
 # test CAPM specification, assuming lag-one AR in returns
-X_test = gen_X(data,asset,'CAPM')
-Y_test = (np.matrix(data.loc[1:,asset].values).T)
+X = gen_X(data,asset,'CAPM')
+Y = (np.matrix(data.loc[1:,asset].values).T)
 
-n = len(Y_test)
+n = len(Y)
 h_test = 0.1
 start = math.floor((h*n)/2)
 end = n - start
 
-datelist_test = list(range(len(Y_test)))[start:end]
+datelist = list(range(len(Y)))[start:end]
 
 # run for loop in parallel
 # with 8 cores and about 10 years of data, this runs in ~ 25 secs
 # --> 500 bs replications should take ~ 35 mins
-results = Parallel(n_jobs=numcores)(delayed(wls)(X=X_test,Y=Y_test,target=date,h=h_test,wt_fxn='uniform') for date in datelist_test)
+results = Parallel(n_jobs=numcores)(delayed(wls)(X=X,Y=Y,target=date,h=h_test,wt_fxn='uniform') for date in datelist)
 
-coeff_results_df = pd.DataFrame(results)
-coeff_results_df.columns = ['const','rm_rf','r_1']
-
+coeffs = pd.DataFrame(results)
+coeffs.columns = ['const','rm_rf','r_1']
 
 # plot fitted values
-fit_const = [a*b for a,b in zip(X_test[start:end,0].flatten().tolist()[0],coeff_results_df['const'].values)]
-fit_rmrf = [a*b for a,b in zip(X_test[start:end,1].flatten().tolist()[0],coeff_results_df['rm_rf'].values)] 
-fit_r_1 = [a*b for a,b in zip(X_test[start:end,2].flatten().tolist()[0],coeff_results_df['r_1'].values)]
-
-fitted = [a+b+c for a,b,c in zip(fit_const,fit_rmrf,fit_r_1)]
+fitted = get_residuals('alternative',X,Y,coeffs,'CAPM',start,end)['fitted']
 
 x = range(1,len(datelist_test)+1)
 
 fig, ax = plt.subplots()
 
-line1, = ax.plot(x[:100], fitted[:100], dashes = [5,5], linewidth=2,color='b',label='fitted')
-line2, = ax.plot(x[:100], Y_test[start:start+100], linewidth=2,color='r')
+line1, = ax.plot(x[:100], fitted[:100].values, dashes = [5,5], linewidth=2,color='b',label='fitted')
+line2, = ax.plot(x[:100], Y[start:start+100], linewidth=2,color='r')
 
 plt.show()
 
+###############################################################################
 
+centered_resids = get_residuals('alternative',X,Y,coeffs,'CAPM',start,end)['centered_resids']
+
+bs_resids = bs_resample(centered_resids.values)
+
+recursive_test = gen_recursive('alternative',coeffs,X.copy(),bs_resids,'CAPM',start,end)
+
+X_recursive = recursive_test[0] # full X-matrix, with [start+1:end,'r_1'] replaced with recursively-generated outcomes
+Y_recursive = Y.copy()
+Y_recursive[start:end] = recursive_test[1] # full Y-matrix, with [start:end] replaced with recursively-generated outcomes
+
+x = range(len(Y[start:start+100]))
+
+fig, ax = plt.subplots()
+
+line1, = ax.plot(x, Y[start:start+100], linewidth=2,color='b')
+line2, = ax.plot(x, Y_recursive[start:start+100], dashes = [5,5], linewidth=2,color='r')
+
+plt.show()
