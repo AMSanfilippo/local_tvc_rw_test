@@ -15,26 +15,31 @@ import pandas as pd
 # Y: dependent variable matrix
 # coeffs: dataframe of fitted tvcs from estimation of alternative (tvc) model
 # factor_model: string, either 'CAPM' or 'FF3'
-def get_residuals(hypothesis,X,Y,coeffs,factor_model):
-    # constant component of fitted values
-    fit_const = coeffs['const'].values
-    # market return component of fitted values
-    fit_rmrf = [a*b for a,b in zip(X[:,1].flatten().tolist()[0],coeffs['rm_rf'].values)] 
-    # lag-one return component of fitted values
-    fit_r_1 = [a*b for a,b in zip(X[:,-1].flatten().tolist()[0],coeffs['r_1'].values)]
-
-    fit_smb = [0]*len(X)
-    fit_hml = [0]*len(X)
-
-    if factor_model == 'FF3':
-        fit_smb = [a*b for a,b in zip(X[:,2].flatten().tolist()[0],coeffs['smb'].values)]
-        fit_hml = [a*b for a,b in zip(X[:,3].flatten().tolist()[0],coeffs['hml'].values)]
+def get_residuals(hypothesis,X,Y,coeffs=pd.DataFrame(),factor_model='CAPM'):
     
-
-    fitted = [a+b+c+d+e for a,b,c,d,e in zip(fit_const,fit_rmrf,fit_r_1,fit_smb,fit_hml)]
+    if hypothesis == 'alternative':
+        # constant component of fitted values
+        fit_const = coeffs['const'].values
+        # market return component of fitted values
+        fit_rmrf = [a*b for a,b in zip(X[:,1].flatten().tolist()[0],coeffs['rm_rf'].values)] 
+        # lag-one return component of fitted values
+        fit_r_1 = [a*b for a,b in zip(X[:,-1].flatten().tolist()[0],coeffs['r_1'].values)]
     
+        fit_smb = [0]*len(X)
+        fit_hml = [0]*len(X)
+    
+        if factor_model == 'FF3':
+            fit_smb = [a*b for a,b in zip(X[:,2].flatten().tolist()[0],coeffs['smb'].values)]
+            fit_hml = [a*b for a,b in zip(X[:,3].flatten().tolist()[0],coeffs['hml'].values)]
+        
+    
+        fitted = [a+b+c+d+e for a,b,c,d,e in zip(fit_const,fit_rmrf,fit_r_1,fit_smb,fit_hml)]
+    
+    if hypothesis == 'null':
+        fitted = (X*np.linalg.inv(X.T*X)*(X.T*Y)).flatten().tolist()[0]
+
     resids = [a-b for a,b, in zip(Y.flatten().tolist()[0],fitted)]
-    
+        
     mean_resid = np.mean(resids)
     centered_resids = [r-mean_resid for r in resids]
     
@@ -53,21 +58,29 @@ def bs_resample(resids):
 # X: full X matrix used for initial estimation 
 # resids: bootstrap sample of residuals from alternative model estimation
 # factor_model: string, either 'CAPM' or 'FF3'
-def gen_recursive(hypothesis,coeffs,X,resids,factor_model):
+def gen_recursive(hypothesis,X,resids,coeffs,factor_model='CAPM'):
     r_0 = X[0,-1] # lagged return value to serve as "seed" for DGP
         
     # initialize empty list of new returns
     r_star = [0]*len(X)
     
-    # generate r* values
+    # generate r* values under alternative hypothesis
     for row in range(len(X)): 
         if row == 0:
             lagged_r = r_0
         else:
             lagged_r = r_star[row-1]
-        current_r = coeffs.loc[row,'const'] + (coeffs.loc[row,'rm_rf']*X[row,1]) + (coeffs.loc[row,'r_1']*lagged_r) + resids[row]
-        if factor_model == 'FF3':
-            current_r = current_r + (coeffs.loc[row,'smb']*X[row,2]) + (coeffs.loc[row,'hml']*X[row,3])
+        
+        if hypothesis == 'alternative':
+            current_r = coeffs.loc[row,'const'] + (coeffs.loc[row,'rm_rf']*X[row,1]) + (coeffs.loc[row,'r_1']*lagged_r) + resids[row]
+            if factor_model == 'FF3':
+                current_r = current_r + (coeffs.loc[row,'smb']*X[row,2]) + (coeffs.loc[row,'hml']*X[row,3])
+    
+        if hypothesis == 'null':
+            current_r = coeffs[0] + (coeffs[1]*X[row,1]) + (coeffs[-1]*lagged_r) + resids[row]
+            if factor_model == 'FF3':
+                current_r = current_r + (coeffs[2]*X[row,2]) + (coeffs[3]*X[row,3])
+        
         r_star[row] = current_r
     
     # replace lagged return values in X with r*
