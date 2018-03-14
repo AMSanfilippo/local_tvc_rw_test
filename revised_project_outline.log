@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2017.5.23)  7 MAR 2018 22:21
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2017.5.23)  11 MAR 2018 15:54
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -198,7 +198,7 @@ Here is how much of TeX's memory you used:
  4961 multiletter control sequences out of 15000+600000
  7885 words of font info for 29 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 27i,12n,32p,949b,260s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 27i,12n,32p,982b,261s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2017/texmf-dist/fonts/
 type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2017/texmf-dist/fonts/t
 ype1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2017/texmf-dist/fonts/ty
@@ -218,7 +218,7 @@ m/cmsy10.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm
 /cmsy5.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/c
 msy6.pfb></usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cms
 y7.pfb>
-Output written on revised_project_outline.pdf (3 pages, 197777 bytes).
+Output written on revised_project_outline.pdf (3 pages, 196004 bytes).
 PDF statistics:
  86 PDF objects out of 1000 (max. 8388607)
  62 compressed objects within 1 object stream

@@ -8,10 +8,9 @@ Created on Fri Feb 23 21:48:15 2018
 
 import pandas as pd
 import numpy as np
+import scipy.stats
 import math
 import matplotlib.pyplot as plt
-from joblib import Parallel, delayed
-import multiprocessing
 
 from clean_data import *
 from residual_bootstrap import *
@@ -22,9 +21,10 @@ from residual_bootstrap import *
 # times: set of all regularized times, from 0 to 1
 # h: bandwidth as proportion of total data
 def gauss(tau,times,h):
-    kernel_inputs = [(t-tau)/h for t in times]
-    kernel_outputs = [(1/math.sqrt(2*math.pi))*np.exp(-(i**2)/2) for i in kernel_inputs]
-    wts = [k/h for k in kernel_outputs]
+    time_diffs = np.subtract(times,tau)
+    kernel_inputs = np.divide(time_diffs,h)
+    kernel_outputs = scipy.stats.norm.pdf(kernel_inputs)
+    wts = np.divide(kernel_outputs,h)
     return wts
 
         
@@ -40,84 +40,108 @@ kernels = {
 # WLS regression
 # X: independent variable matrix with column of 1s for intercept
 # Y: dependent variable matrix
-# target: target time on [1...n], passed as implicit index starting at 0
-# h: bandwidth (proportion on [0,1])
-def wls(X,Y,target,wt_fxn,h):
-    print(target)
-    tau = target/len(Y) # normalize target value on [0,1]
-    times = [i/len(Y) for i in list(range(len(Y)))]
-    W = np.diag(kernels[wt_fxn](tau,times,h)) # diagonal matrix of weights
+# W: diagonal matrix of kernel weights
+def wls(X,Y,W):
+    XT_W = (X.T).dot(W) 
     # B_hat = inv(X'WX) * (X'WY)
-    B_hat = np.linalg.inv(X.T*W*X)*(X.T*W*Y) 
+    B_hat = np.linalg.solve(XT_W.dot(X),XT_W.dot(Y)) # faster than inversion
     # return coefficient estimates and residuals
-    return B_hat.flatten().tolist()[0]
+    return B_hat.T
 
-
+# OLS regression
+# X: independent variable matrix with column of 1s for intercept
+# Y: dependent variable matrix
 def ols(X,Y):
     B_hat = np.linalg.inv(X.T*X)*(X.T*Y)
     return B_hat.flatten().tolist()[0]
 
 ###############################################################################
 
-numcores = multiprocessing.cpu_count()
-
-data = clean_data('19940101','20031230')
+data = clean_data('19940101','20031230') 
 
 asset = 'Telcm'
 
 # test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,'CAPM')
+# test FF3 specification, assuming lag-one AR in returns
+# X = gen_X(data,asset,'FF3')
 Y = (np.matrix(data.loc[1:,asset].values).T)
 
-datelist = list(range(len(Y)))
+# iterate through normalized dates
+normalized_datelist = np.divide(range(len(Y)),len(Y))
 
-h = 0.1
+h = 0.1 # bandwidth
 
-# run for loop in parallel
-# with 8 cores and about 10 years of data, this runs in ~ 25 secs
-# --> 500 bs replications should take ~ 35 mins
-results = Parallel(n_jobs=numcores)(delayed(wls)(X=X,Y=Y,target=date,wt_fxn='gaussian',h=h) for date in datelist)
+# to speed up regression: compute and store kernel weights first
+# note: weights are f(h,n) only
+# a given bootstrap procedure will always use the same h and n, so this is valid
+wtmat = np.matrix([0]*len(normalized_datelist))
+for tau in normalized_datelist:
+    outwts = np.asmatrix(gauss(tau,normalized_datelist,h))
+    wtmat = np.concatenate((wtmat,outwts))
 
-coeffs = pd.DataFrame(results)
+wtmat = wtmat[1:,:] # ith row = wts. for estimating ith set of coeffs.
+
+W = np.zeros((len(Y),len(Y)),float) # empty, to become diagonal weight matrix
+results = np.matrix([0]*len(X.T))
+
+# estimate nonparametric regression
+# 8 SECONDS!!
+for d in range(len(Y)):
+    np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
+    out = wls(X,Y,W)
+    # return coefficient estimates and residuals
+    results = np.concatenate((results,out))
+
+coeffs = pd.DataFrame(results[1:,:])
 coeffs.columns = ['const','rm_rf','r_1']
+# coeffs.columns = ['const','rm_rf','smb','hml','r_1']
 
 # plot fitted values
+# fitted = get_residuals('alternative',X,Y,coeffs,'FF3')['fitted']
 fitted = get_residuals('alternative',X,Y,coeffs,'CAPM')['fitted']
 
-x = range(len(datelist))
+x = range(len(normalized_datelist))
 
 fig, ax = plt.subplots()
 
-line1, = ax.plot(x[:50], fitted[:50].values, dashes = [5,5], linewidth=2,color='b',label='fitted')
+line1, = ax.plot(x[:50], fitted[:50].values,color='b',dashes=[5,5])
 line2, = ax.plot(x[:50], Y[:50], linewidth=2,color='r')
 
 plt.show()
 
 ###############################################################################
 
-datelist = list(range(len(Y)))
+# NOTE: use same normalized_datelist, h, and wtmat/W as in the above estimation
 
-# centered_resids = get_residuals('alternative',X,Y,coeffs,'CAPM')['centered_resids']
-resids = get_residuals('alternative',X,Y,coeffs,'CAPM')['resids'] # probably don't need to use centered resids
+centered_resids = get_residuals('alternative',X,Y,coeffs,'CAPM')['centered_resids'] 
+# resids = get_residuals('alternative',X,Y,coeffs,'FF3')['centered_resids'] 
+   
+r_0 = X[0,-1] # lagged return value to serve as "seed" for DGP
+X_cp = X.copy() # X matrix for DGP
 
-const_bs = pd.DataFrame()
-rm_rf_bs = pd.DataFrame()
-r_1_bs = pd.DataFrame()
-
-B = 10 # number of bootstrap replications
+B = 100 # number of bootstrap replications
+r_1_bs = pd.DataFrame(np.zeros((len(Y),B),float))
 for i in range(B):
-    print('bs iteration: ', i)
-    bs_resids = bs_resample(resids.values)
-    X_cp = X.copy()
-    recursive = gen_recursive('alternative',X_cp,bs_resids,coeffs,'CAPM')
-    X_recur = recursive[0]
+    print('bs iteration: ', (i+1))
+    bs_resids = bs_resample(centered_resids.values)
+    recursive = gen_recursive('alternative',X_cp,r_0,bs_resids,coeffs,'CAPM')
+    # recursive = gen_recursive('alternative',X_cp,r_0,bs_resids,coeffs,'FF3')
+    X_cp[:,-1] = recursive[0]
     Y_recur = recursive[1]
-    bs_est = Parallel(n_jobs=numcores)(delayed(wls)(X=X_recur,Y=Y_recur,target=date,wt_fxn='gaussian',h=h) for date in datelist)
-    bs_est_mat = np.asmatrix(bs_est)
-    const_bs[i] = bs_est_mat[:,0].flatten().tolist()[0]
-    rm_rf_bs[i] = bs_est_mat[:,1].flatten().tolist()[0]
-    r_1_bs[i] = bs_est_mat[:,2].flatten().tolist()[0]
+    results = np.matrix([0]*len(X.T))
+    # estimate nonparametric regression on bootstrap dataset
+    for d in range(len(Y_recur)):
+        np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
+        out = wls(X_cp,Y_recur,W)
+        # return coefficient estimates and residuals
+        results = np.concatenate((results,out))
+    r_1_bs[i] = results[1:,-1]
  
+    
+### ### CURRENT STOPPING POINT FOR OPTIMIZATION ### ### 
+# Save bootstrap output FFR, so that we can shut down Python for now
+r_1_bs.to_csv('bs_coeffs_test.t')
     
 r_1_hat = coeffs['r_1'] # point estimates for lag-one coefficient
 bs_sd = np.std(r_1_bs,axis=1,ddof=1)
@@ -151,14 +175,16 @@ null_resids = get_residuals('null',X,Y)['resids']
 
 rss_restricted = sum([a**2 for a in null_resids.values])
 
-alternative_resids = get_residuals('alternative',X,Y,coeffs,'CAPM')['resids'] 
+# alternative_resids = get_residuals('alternative',X,Y,coeffs,'CAPM')['resids'] 
+alternative_resids = get_residuals('alternative',X,Y,coeffs,'FF3')['resids'] 
 rss_unrestricted = sum([a**2 for a in alternative_resids.values])  
 
 tau_hat = (rss_restricted - rss_unrestricted)/rss_unrestricted
 
-B = 10 # number of bootstrap replications
+B = 5 # number of bootstrap replications
 taus = [0]*B
-alternative_resids_centered = get_residuals('alternative',X,Y,coeffs,'CAPM')['centered_resids'] # should this be centered or not??
+# alternative_resids_centered = get_residuals('alternative',X,Y,coeffs,'CAPM')['centered_resids'] 
+alternative_resids_centered = get_residuals('alternative',X,Y,coeffs,'FF3')['centered_resids']
 
 # compute null distribution of the test statistic using bootstrap
 for i in range(B):
@@ -170,8 +196,10 @@ for i in range(B):
     Y_recur = recursive[1]
     bs_alt_est = Parallel(n_jobs=numcores)(delayed(wls)(X=X_recur,Y=Y_recur,target=date,wt_fxn='gaussian',h=h) for date in datelist)
     bs_alt_est_coeffs = pd.DataFrame(bs_alt_est)
-    bs_alt_est_coeffs.columns = ['const','rm_rf','r_1']
-    bs_alt_resids = get_residuals('alternative',X_recur,Y_recur,bs_alt_est_coeffs,'CAPM')['resids']
+    # bs_alt_est_coeffs.columns = ['const','rm_rf','r_1']
+    bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','r_1']
+    # bs_alt_resids = get_residuals('alternative',X_recur,Y_recur,bs_alt_est_coeffs,'CAPM')['resids']
+    bs_alt_resids = get_residuals('alternative',X_recur,Y_recur,bs_alt_est_coeffs,'FF3')['resids']
     bs_alt_rss = sum([a**2 for a in bs_alt_resids.values])  
     # it's not entirely clear based on sources what one is meant to do here:
     # it seems one would calculate null RSS in the BS sample, and use this for test statistic
@@ -179,4 +207,12 @@ for i in range(B):
     bs_null_rss = sum([a**2 for a in bs_null_resids.values])
     taus[i] = (bs_null_rss - bs_alt_rss)/bs_alt_rss # T* in null distribution
 
+###############################################################################
+
+### old parallel code ###
+    
+# run for loop in parallel
+# with 8 cores and about 10 years of data, this runs in ~ 25 secs
+# using solve() instead of inv() here shaves 2-3 secs
+# results = Parallel(n_jobs=numcores)(delayed(wls)(X=X,Y=Y,target=date,wt_fxn='gaussian',h=h) for date in datelist)
 

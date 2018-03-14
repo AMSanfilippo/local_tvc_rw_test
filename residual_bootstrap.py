@@ -21,27 +21,26 @@ def get_residuals(hypothesis,X,Y,coeffs=pd.DataFrame(),factor_model='CAPM'):
         # constant component of fitted values
         fit_const = coeffs['const'].values
         # market return component of fitted values
-        fit_rmrf = [a*b for a,b in zip(X[:,1].flatten().tolist()[0],coeffs['rm_rf'].values)] 
+        fit_rmrf = np.multiply(np.array(X[:,1].T)[0],coeffs['rm_rf'].values)
         # lag-one return component of fitted values
-        fit_r_1 = [a*b for a,b in zip(X[:,-1].flatten().tolist()[0],coeffs['r_1'].values)]
+        fit_r_1 = np.multiply(np.array(X[:,-1].T)[0],coeffs['r_1'].values) 
     
-        fit_smb = [0]*len(X)
-        fit_hml = [0]*len(X)
+        fit_smb = np.array([0]*len(X))
+        fit_hml = np.array([0]*len(X))
     
         if factor_model == 'FF3':
-            fit_smb = [a*b for a,b in zip(X[:,2].flatten().tolist()[0],coeffs['smb'].values)]
-            fit_hml = [a*b for a,b in zip(X[:,3].flatten().tolist()[0],coeffs['hml'].values)]
-        
+            fit_smb = np.multiply(np.array(X[:,2].T)[0],coeffs['smb'].values) 
+            fit_hml = np.multiply(np.array(X[:,3].T)[0],coeffs['hml'].values)
     
-        fitted = [a+b+c+d+e for a,b,c,d,e in zip(fit_const,fit_rmrf,fit_r_1,fit_smb,fit_hml)]
+        fitted = np.add(np.add(np.add(np.add(fit_const,fit_rmrf),fit_r_1),fit_smb),fit_hml)
     
     if hypothesis == 'null':
-        fitted = (X*np.linalg.inv(X.T*X)*(X.T*Y)).flatten().tolist()[0]
+        fitted = np.array((X.dot(np.linalg.solve((X.T).dot(X),(X.T).dot(Y)))).T)[0]
 
-    resids = [a-b for a,b, in zip(Y.flatten().tolist()[0],fitted)]
+    resids = np.subtract(np.array(Y.T)[0],fitted)
         
     mean_resid = np.mean(resids)
-    centered_resids = [r-mean_resid for r in resids]
+    centered_resids = np.subtract(resids,mean_resid)
     
     return pd.DataFrame({'fitted':fitted,'resids':resids,'centered_resids':centered_resids})
 
@@ -55,11 +54,11 @@ def bs_resample(resids):
 # recursively generate new sample {(y*,x)} using bs sample of residuals
 # hypothesis: string, "null" or "alternative" (as of now this only handles alternative)
 # coeffs: dataframe of fitted tvcs from estimation of alternative (tvc) model
-# X: full X matrix used for initial estimation 
+# X: c(opy of) X matrix used for initial estimation
+# r_0: lagged return value to serve as "seed" for DGP
 # resids: bootstrap sample of residuals from alternative model estimation
 # factor_model: string, either 'CAPM' or 'FF3'
-def gen_recursive(hypothesis,X,resids,coeffs,factor_model='CAPM'):
-    r_0 = X[0,-1] # lagged return value to serve as "seed" for DGP
+def gen_recursive(hypothesis,X,r_0,resids,coeffs,factor_model='CAPM'):
         
     # initialize empty list of new returns
     r_star = [0]*len(X)
@@ -72,23 +71,20 @@ def gen_recursive(hypothesis,X,resids,coeffs,factor_model='CAPM'):
             lagged_r = r_star[row-1]
         
         if hypothesis == 'alternative':
-            current_r = coeffs.loc[row,'const'] + (coeffs.loc[row,'rm_rf']*X[row,1]) + (coeffs.loc[row,'r_1']*lagged_r) + resids[row]
+            current_r = np.add(np.add(np.add(coeffs.loc[row,'const'],np.multiply(coeffs.loc[row,'rm_rf'],X[row,1])),np.multiply(coeffs.loc[row,'r_1'],lagged_r)),resids[row])
             if factor_model == 'FF3':
-                current_r = current_r + (coeffs.loc[row,'smb']*X[row,2]) + (coeffs.loc[row,'hml']*X[row,3])
+                current_r = np.add(np.add(current_r,np.multiply(coeffs.loc[row,'smb'],X[row,2])),np.multiply(coeffs.loc[row,'hml'],X[row,3]))
     
         if hypothesis == 'null':
-            current_r = coeffs[0] + (coeffs[1]*X[row,1]) + (coeffs[-1]*lagged_r) + resids[row]
+            current_r = np.add(np.add(np.add(coeffs[0],np.multiply(coeffs[1],X[row,1])),np.multiply(coeffs[-1],lagged_r)),resids[row])
             if factor_model == 'FF3':
-                current_r = current_r + (coeffs[2]*X[row,2]) + (coeffs[3]*X[row,3])
+                current_r = np.add(np.add(current_r,np.multiply(coeffs[2],X[row,2])),np.multiply(coeffs[3],X[row,3]))
         
         r_star[row] = current_r
     
-    # replace lagged return values in X with r*
-    X[1:,-1] = np.matrix(r_star[:len(r_star)-1]).T
+    # return recursively-generated returns and new lagged return column
     Y_star = np.matrix(r_star).T
+    X_star = np.matrix([r_0] + r_star[:len(r_star)-1]).T
     
-    return [X,Y_star]
-    
-    
-    
-    
+    return [X_star,Y_star]
+      
