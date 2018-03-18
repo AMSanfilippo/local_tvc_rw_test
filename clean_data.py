@@ -71,7 +71,6 @@ def gen_X(data,asset,factor_model):
     return X
 
     
-    
 
 
 
