@@ -60,14 +60,14 @@ def ols(X,Y):
 
 data = clean_data('19940101','20031230') 
 
-asset = 'Telcm'
+asset = 'Durbl'
 model = 'CAPM' # 'FF3'
 
 # test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,model)
 # test FF3 specification, assuming lag-one AR in returns
 # X = gen_X(data,asset,'FF3')
-Y = (np.matrix(data.loc[1:,asset].values).T)
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T) # excess returns
 
 # iterate through normalized dates
 normalized_datelist = np.divide(range(len(Y)),len(Y))
@@ -79,7 +79,8 @@ normalized_datelist = np.divide(range(len(Y)),len(Y))
 # note: assume normalized_datelist defined as above
 # normalized_datelist = np.divide(range(len(Y)),len(Y))
 
-test_bandwidths = [0.1,0.2] # list of bandwidths to test; not fully filled 
+test_bandwidths = list(np.divide(range(1,26),500)) # list of bandwidths to test
+# (tbh the optimal bandwidth will never be above 0.05 so why bother checking.)
 
 X_cp = X.copy()
 Y_cp = Y.copy()
@@ -110,14 +111,18 @@ for h in test_bandwidths:
         sq_error = np.power(np.subtract(Y[d],np.dot(X_cp[d],out_loocv.T)),2)
         sse = np.add(sse,sq_error)
     
+    # IMPORTANT: when would the smallest bandwidth NOT minimize this MSE??
     mse = np.array(np.divide(sse,len(Y_cp)))[0] # loocv MSE with bandwidth = h
     cv_mses.append(mse[0]) 
 
 results = pd.Series(cv_mses,index=test_bandwidths)
+results.to_csv('output/' + asset + '/loocv_' + model + '.csv')
+
+h = results[results==min(results)].index[0] # optimal bandwidth
 
 ###############################################################################
 
-h = 0.1 # bandwidth; in practice, should use optimal value found above
+# NOTE: all of the below assumes the use of the optimal bandwidth from above
 
 # to speed up regression: compute and store kernel weights first
 # note: weights are f(h,n) only
@@ -146,7 +151,7 @@ if model == 'CAPM':
 elif model == 'FF3':
     coeffs.columns = ['const','rm_rf','smb','hml','r_1']
     
-coeffs.to_csv('output/nonparam_coeff_ests_' + asset + '_' + model + '.csv')
+coeffs.to_csv('output/' + asset + '/nonparam_coeff_ests_' + model + '.csv')
 
 # plot fitted values
 fitted = get_residuals('alternative',X,Y,coeffs,model)['fitted']
@@ -162,8 +167,36 @@ myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Returns and fitted values, ' + asset + ', ' + model)
 
+#plt.show()
+plt.savefig('figures/' + asset + '/fitted_' + model + '.jpg')
+
+# histogram of residuals
+resids = get_residuals('alternative',X,Y,coeffs,model)['resids']
+
+fig, ax = plt.subplots(figsize=(7,5))
+ax.hist(resids.values,bins=100)
+ax.set_title('Histogram of residuals, ' + asset + ', ' + model)
+#plt.show()
+plt.savefig('figures/' + asset + '/resid_hist_' + model + '.jpg')
+
+# plot of coefficient point estimates over time
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, coeffs['const'].values, color='r',label='constant (alpha)')
+line2, = ax.plot(x, coeffs['rm_rf'].values, color='g',label='market return')
+line3, = ax.plot(x, coeffs['r_1'].values, color='b',label='lag-one return')
+if model == 'FF3':
+    line4, = ax.plot(x, coeffs['smb'].values, color='o',label='size factor')
+    line5, = ax.plot(x, coeffs['hml'].values, color='b',label='value factor')
+line6, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
+    
+ax.legend(loc='lower left')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Coefficient point estimates, ' + asset + ', ' + model)
+
 # plt.show()
-plt.savefig('figures/fitted_' + asset + '_' + model + '.jpg')
+plt.savefig('figures/' + asset + '/coeffs_' + model + '.jpg')
 
 ###############################################################################
 
@@ -191,17 +224,15 @@ for i in range(B):
         results = np.concatenate((results,out))
     r_1_bs[i] = results[1:,-1]
 
-r_1_bs.to_csv('output/bs_coeff_ests_' + asset + '_' + model + '.csv')
+r_1_bs.to_csv('output/' + asset + '/bs_coeff_ests_' + model + '.csv')
     
-# earlier: had saved bootstrap output FFR. reload now
-r_1_bs = pd.read_csv('output/bs_coeffs_test.csv')
 
 r_1_hat = coeffs['r_1'] # point estimates for lag-one coefficient
 bs_sd = np.std(r_1_bs,axis=1,ddof=1)
 Q = (r_1_bs.sub(r_1_hat,axis=0)).divide(bs_sd,axis=0) # Q = (r_1_hat - r_1*)/sd(r_1*) for all t
 
 # empirical critical value for 95% pointwise CI
-c = np.percentile(Q,97.5,axis=1,interpolation='higher') # may want to think about different interpolation param
+c = np.percentile(Q,97.5,axis=1,interpolation='midpoint') 
 me =  np.multiply(bs_sd.values,c) # margin of error
 
 # CIs: b_hat +/- c*sd for each t
@@ -209,7 +240,7 @@ CI_lb = np.subtract(r_1_hat.values,me)
 CI_ub = np.add(r_1_hat.values,me)
 
 CI_df = pd.DataFrame({'lb':CI_lb,'pt_est':r_1_hat.values,'ub':CI_ub})
-CI_df.to_csv('output/bs_coeff_CIs_' + asset + '_' + model + '.csv')
+CI_df.to_csv('output/' + asset + '/bs_coeff_CIs_' + model + '.csv')
 
 # plot 95% pointwise CIs
 x = data.loc[1:,'Date']
@@ -226,11 +257,28 @@ ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('95% pointwise confidence intervals for coefficient on single-day lagged returns, ' + asset + ', ' + model)
 
 #plt.show()
-plt.savefig('figures/pointwiseCIs_' + asset + '_' + model + '.jpg')
+plt.savefig('figures/' + asset + '/pointwiseCIs_' + model + '.jpg')
 
 ###############################################################################
 
 ols_out = ols(X,Y) 
+
+ols_fitted = get_residuals('null',X,Y)['fitted']
+
+# plot ols fitted values
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, Y, color='r',label='returns')
+line2, = ax.plot(x, ols_fitted.values,color='b',dashes=[5,5],label='ols fitted values')
+ax.legend(loc='lower left')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Returns and OLS fitted values, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/fitted_' + model + '.jpg')
 
 null_resids = get_residuals('null',X,Y)['resids']
 
@@ -274,17 +322,21 @@ for i in range(B):
     bs_null_rss = sum(np.power(bs_null_resids.values,2))
     taus[i] = (bs_null_rss - bs_alt_rss)/bs_alt_rss # T* in null distribution
 
-f = open('output/taus_' + asset + '_' + model + '.txt','w')
+f = open('output/' + asset + '/taus_' + model + '.txt','w')
 for t in taus:
     f.write(str(t)+',')
 f.close()
 
+fig, ax = plt.subplots(figsize=(7,5))
+
+ax.hist(taus,bins=15) 
+ax.set_title('Distribution of tau statistic under H0: all coefficients time-invariant, ' + asset + ', ' + model)
+ax.axvline(tau_hat, color='r', linestyle='dashed', linewidth=2,label='test statistic value')
+ax.legend(loc='upper left')
+
+#plt.show()
+plt.savefig('figures/' + asset + '/tau_hist_' + model +'.jpg')
+
 sum(taus > tau_hat) # 0. reject H0.
 
 ###############################################################################
-
-
-
-
-
-
