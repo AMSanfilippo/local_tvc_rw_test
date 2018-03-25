@@ -60,7 +60,7 @@ def ols(X,Y):
 
 data = clean_data('19940101','20031230') 
 
-asset = 'Durbl'
+asset = 'NoDur'
 model = 'CAPM' # 'FF3'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -75,7 +75,6 @@ normalized_datelist = np.divide(range(len(Y)),len(Y))
 ###############################################################################
 
 # optimal bandwidth procedure
-# this will take a while: about 8.5 mins for 10 bandwidths
 # note: assume normalized_datelist defined as above
 # normalized_datelist = np.divide(range(len(Y)),len(Y))
 
@@ -90,14 +89,15 @@ cv_mses = []
 
 for h in test_bandwidths:
     print(h)
+    
     # compute and store kernel weights for this bandwidth
-    # the most time-consuming part of the procedure
-    wtmat_h = np.matrix([0]*len(normalized_datelist))
+    # not using concatenate; v faster much better
+    wtmat_h = np.matrix(np.zeros((len(normalized_datelist),len(normalized_datelist))))
+    ind = 0
     for tau in normalized_datelist:
-        outwts = np.asmatrix(gauss(tau,normalized_datelist,h))
-        wtmat_h = np.concatenate((wtmat_h,outwts))
-
-    wtmat_h = wtmat_h[1:,:] # ith row = wts. for estimating ith set of coeffs.
+        outwts = gauss(tau,normalized_datelist,h)
+        wtmat_h[ind,:] = outwts
+        ind += 1
     
     sse = 0 # track sum of sq. errors
     
@@ -127,25 +127,24 @@ h = results[results==min(results)].index[0] # optimal bandwidth
 # to speed up regression: compute and store kernel weights first
 # note: weights are f(h,n) only
 # a given bootstrap procedure will always use the same h and n, so this is valid
-wtmat = np.matrix([0]*len(normalized_datelist))
+wtmat = np.matrix(np.zeros((len(normalized_datelist),len(normalized_datelist))))
+ind = 0
 for tau in normalized_datelist:
-    outwts = np.asmatrix(gauss(tau,normalized_datelist,h))
-    wtmat = np.concatenate((wtmat,outwts))
-
-wtmat = wtmat[1:,:] # ith row = wts. for estimating ith set of coeffs.
+    outwts = gauss(tau,normalized_datelist,h)
+    wtmat[ind,:] = outwts
+    ind += 1
 
 W = np.zeros((len(Y),len(Y)),float) # empty, to become diagonal weight matrix
-results = np.matrix([0]*len(X.T))
+results = np.asmatrix(np.zeros((len(X),len(X.T))))
 
 # estimate nonparametric regression
-# 8 SECONDS!!
 for d in range(len(Y)):
     np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
     out = wls(X,Y,W)
     # return coefficient estimates and residuals
-    results = np.concatenate((results,out))
+    results[d,:] = out
 
-coeffs = pd.DataFrame(results[1:,:])
+coeffs = pd.DataFrame(results)
 if model == 'CAPM':
     coeffs.columns = ['const','rm_rf','r_1']
 elif model == 'FF3':
@@ -153,7 +152,7 @@ elif model == 'FF3':
     
 coeffs.to_csv('output/' + asset + '/nonparam_coeff_ests_' + model + '.csv')
 
-# plot fitted values
+# ts plot of fitted values
 fitted = get_residuals('alternative',X,Y,coeffs,model)['fitted']
 
 x = data.loc[1:,'Date']
@@ -179,7 +178,16 @@ ax.set_title('Histogram of residuals, ' + asset + ', ' + model)
 #plt.show()
 plt.savefig('figures/' + asset + '/resid_hist_' + model + '.jpg')
 
-# plot of coefficient point estimates over time
+# ts plot of residuals
+fig, ax = plt.subplots(figsize=(10,5))
+line1, = ax.plot(x, resids.values, color='b')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Residuals, ' + asset + ', ' + model)
+#plt.show()
+plt.savefig('figures/' + asset + '/resid_ts_' + model + '.jpg')
+
+# ts plot of coefficient point estimates
 fig, ax = plt.subplots(figsize=(10,5))
 
 line1, = ax.plot(x, coeffs['const'].values, color='r',label='constant (alpha)')
@@ -195,7 +203,7 @@ myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Coefficient point estimates, ' + asset + ', ' + model)
 
-# plt.show()
+#plt.show()
 plt.savefig('figures/' + asset + '/coeffs_' + model + '.jpg')
 
 ###############################################################################
@@ -215,14 +223,15 @@ for i in range(B):
     recursive = gen_recursive('alternative',X_cp,r_0,bs_resids,coeffs,model)
     X_cp[:,-1] = recursive[0]
     Y_recur = recursive[1]
-    results = np.matrix([0]*len(X.T))
+    results = np.asmatrix(np.zeros((len(X_cp),len(X_cp.T))))
+    
     # estimate nonparametric regression on bootstrap dataset
     for d in range(len(Y_recur)):
-        np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
+        np.fill_diagonal(W,wtmat[d])
         out = wls(X_cp,Y_recur,W)
-        # return coefficient estimates and residuals
-        results = np.concatenate((results,out))
-    r_1_bs[i] = results[1:,-1]
+        results[d,:] = out
+        
+    r_1_bs[i] = results[:,-1]
 
 r_1_bs.to_csv('output/' + asset + '/bs_coeff_ests_' + model + '.csv')
     
@@ -260,6 +269,10 @@ ax.set_title('95% pointwise confidence intervals for coefficient on single-day l
 plt.savefig('figures/' + asset + '/pointwiseCIs_' + model + '.jpg')
 
 ###############################################################################
+
+# specification test 
+# H0: all coefficients time-invariate vs.
+# HA: at least one coefficient time-varying
 
 ols_out = ols(X,Y) 
 
@@ -303,18 +316,20 @@ for i in range(B):
     recursive = gen_recursive('null',X_cp,r_0,bs_resids,ols_out)
     X_cp[:,-1] = recursive[0]
     Y_recur = recursive[1]
-    results = np.matrix([0]*len(X.T))
+    
+    results = np.asmatrix(np.zeros((len(X_cp),len(X_cp.T))))
     # estimate nonparametric regression on bootstrap dataset, generated under null DGP
     for d in range(len(Y_recur)):
-        np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
+        np.fill_diagonal(W,wtmat[d])
         out = wls(X_cp,Y_recur,W)
-        # return coefficient estimates and residuals
-        results = np.concatenate((results,out))
-    bs_alt_est_coeffs = pd.DataFrame(results[1:,:])
+        results[d,:] = out
+    
+    bs_alt_est_coeffs = pd.DataFrame(results)
     if model == 'CAPM':
         bs_alt_est_coeffs.columns = ['const','rm_rf','r_1']
     elif model == 'FF3':
         bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','r_1']
+        
     bs_alt_resids = get_residuals('alternative',X_cp,Y_recur,bs_alt_est_coeffs,model)['resids']
     bs_alt_rss = sum(np.power(bs_alt_resids.values,2))  
     # calculate null model RSS in bootstrap dataset
@@ -340,3 +355,104 @@ plt.savefig('figures/' + asset + '/tau_hist_' + model +'.jpg')
 sum(taus > tau_hat) # 0. reject H0.
 
 ###############################################################################
+
+# specification test
+# H0: (all coefficients time-varying and) coefficient on lagged return = 0 for all t
+# HA: (all coefficients time-varying and) coefficient on lagged return != 0 for some t
+
+X_cp_nolag = np.delete(X.copy(),-1,1)
+results_nolag = np.asmatrix(np.zeros((len(X_cp_nolag),len(X_cp_nolag.T))))
+
+# estimate nonparametric regression on null model
+for d in range(len(Y)):
+    np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
+    out = wls(X_cp_nolag,Y,W)
+    # return coefficient estimates and residuals
+    results[d,:] = out
+
+coeffs_nolag = pd.DataFrame(results_nolag)
+if model == 'CAPM':
+    coeffs_nolag.columns = ['const','rm_rf']
+elif model == 'FF3':
+    coeffs_nolag.columns = ['const','rm_rf','smb','hml']
+    
+coeffs_nolag.to_csv('output/' + asset + '/nonparam_null_ests_' + model + '.csv')
+
+null_resids = get_residuals('alternative',X_cp_nolag,Y,coeffs_nolag,model)['resids']
+rss_restricted = sum(np.power(null_resids.values,2))  
+
+# using results from above estimation of alternative model
+alternative_resids = get_residuals('alternative',X,Y,coeffs,model)['resids'] 
+rss_unrestricted = sum(np.power(alternative_resids.values,2))  
+
+tau_hat = (rss_restricted - rss_unrestricted)/rss_unrestricted # test statistic to compare to null distribution
+
+
+coeffs_nolag['r_1'] = np.zeros(len(coeffs_nolag)) # under null, beta(r_1) = 0 for all t
+r_0 = X[0,-1] # lagged return value to serve as "seed" for DGP
+
+# matrix for specification testing: beta(r_1) = 0 for all t vs. beta(r_1) != 0 for some t 
+X_cp_spec = np.concatenate((X_cp_nolag,np.matrix([0]*len(X_cp_nolag)).T),axis=1) 
+
+B = 100 # number of bootstrap replications
+taus = [0]*B
+alternative_resids_centered = get_residuals('alternative',X,Y,coeffs,model)['centered_resids'] 
+
+# compute null distribution of the test statistic using bootstrap
+for i in range(B):
+    print('bs iteration: ', i)
+    bs_resids = bs_resample(alternative_resids_centered.values) 
+    recursive = gen_recursive('alternative',X_cp_nolag,r_0,bs_resids,coeffs_nolag)
+    X_cp_spec[:,-1] = recursive[0]
+    Y_recur = recursive[1]
+    results = np.asmatrix(np.zeros((len(X),len(X.T))))
+    results_null = np.asmatrix(np.zeros((len(X_cp_nolag),len(X_cp_nolag.T))))
+    
+    # simultaneously: 
+    # estimate nonparametric alternative model on bootstrap dataset, generated under null DGP
+    # estimate nonparametric null model on bootstrap dataset
+    for d in range(len(Y_recur)):
+        np.fill_diagonal(W,wtmat[d])
+        out = wls(X_cp_spec,Y_recur,W)
+        out_null = wls(X_cp_nolag,Y_recur,W)
+        results[d,:] = out
+        results_null[d,:] = out_null
+        
+    bs_alt_est_coeffs = pd.DataFrame(results)
+    bs_null_est_coeffs = pd.DataFrame(results_null)
+    if model == 'CAPM':
+        bs_alt_est_coeffs.columns = ['const','rm_rf','r_1']
+        bs_null_est_coeffs.columns = ['const','rm_rf']
+    elif model == 'FF3':
+        bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','r_1']
+        bs_null_est_coeffs.columns = ['const','rm_rf','smb','hml']
+        
+    bs_alt_resids = get_residuals('alternative',X_cp_spec,Y_recur,bs_alt_est_coeffs,model)['resids']
+    bs_alt_rss = sum(np.power(bs_alt_resids.values,2))  
+    
+    bs_null_resids = get_residuals('alternative',X_cp_nolag,Y_recur,bs_null_est_coeffs,model)['resids']
+    bs_null_rss = sum(np.power(bs_null_resids.values,2))  
+
+    taus[i] = (bs_null_rss - bs_alt_rss)/bs_alt_rss # T* in null distribution
+
+
+f = open('output/' + asset + '/taus_alt' + model + '.txt','w')
+for t in taus:
+    f.write(str(t)+',')
+f.close()
+
+fig, ax = plt.subplots(figsize=(7,5))
+
+ax.hist(taus,bins=15) 
+ax.set_title('Distribution of tau statistic under H0: beta(r_1) = 0 for all times t, ' + asset + ', ' + model)
+ax.axvline(tau_hat, color='r', linestyle='dashed', linewidth=2,label='test statistic value')
+ax.legend(loc='upper left')
+
+#plt.show()
+plt.savefig('figures/' + asset + '/tau_hist_' + model +'.jpg')
+
+sum(taus > tau_hat) # 0. reject H0.
+
+
+###############################################################################
+

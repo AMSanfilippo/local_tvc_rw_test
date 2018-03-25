@@ -22,8 +22,13 @@ def get_residuals(hypothesis,X,Y,coeffs=pd.DataFrame(),factor_model='CAPM'):
         fit_const = coeffs['const'].values
         # market return component of fitted values
         fit_rmrf = np.multiply(np.array(X[:,1].T)[0],coeffs['rm_rf'].values)
-        # lag-one return component of fitted values
-        fit_r_1 = np.multiply(np.array(X[:,-1].T)[0],coeffs['r_1'].values) 
+        
+        fit_r_1 = np.array([0]*len(X))
+        
+        # if time-varying specification includes lagged return variable
+        if len(X.T) >= 3:
+            # lag-one return component of fitted values
+            fit_r_1 = np.multiply(np.array(X[:,-1].T)[0],coeffs['r_1'].values) 
     
         fit_smb = np.array([0]*len(X))
         fit_hml = np.array([0]*len(X))
