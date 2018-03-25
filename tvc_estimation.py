@@ -60,7 +60,7 @@ def ols(X,Y):
 
 data = clean_data('19940101','20031230') 
 
-asset = 'NoDur'
+asset = 'Durbl'
 model = 'CAPM' # 'FF3'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -159,12 +159,12 @@ x = data.loc[1:,'Date']
 
 fig, ax = plt.subplots(figsize=(10,5))
 
-line1, = ax.plot(x, Y, color='r',label='returns')
+line1, = ax.plot(x, Y, color='r',label='excess returns')
 line2, = ax.plot(x, fitted.values,color='b',dashes=[5,5],label='fitted values')
 ax.legend(loc='lower left')
 myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
-ax.set_title('Returns and fitted values, ' + asset + ', ' + model)
+ax.set_title('Excess returns and fitted values, ' + asset + ', ' + model)
 
 #plt.show()
 plt.savefig('figures/' + asset + '/fitted_' + model + '.jpg')
@@ -283,12 +283,12 @@ x = data.loc[1:,'Date']
 
 fig, ax = plt.subplots(figsize=(10,5))
 
-line1, = ax.plot(x, Y, color='r',label='returns')
+line1, = ax.plot(x, Y, color='r',label='excess returns')
 line2, = ax.plot(x, ols_fitted.values,color='b',dashes=[5,5],label='ols fitted values')
 ax.legend(loc='lower left')
 myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
-ax.set_title('Returns and OLS fitted values, ' + asset + ', ' + model)
+ax.set_title('Excess returns and OLS fitted values, ' + asset + ', ' + model)
 
 #plt.show()
 plt.savefig('figures/' + asset + '/fitted_' + model + '.jpg')
@@ -345,7 +345,7 @@ f.close()
 fig, ax = plt.subplots(figsize=(7,5))
 
 ax.hist(taus,bins=15) 
-ax.set_title('Distribution of tau statistic under H0: all coefficients time-invariant, ' + asset + ', ' + model)
+ax.set_title('Distribution of tau statistic under H0: all coefficients time-invariant; ' + asset + ', ' + model)
 ax.axvline(tau_hat, color='r', linestyle='dashed', linewidth=2,label='test statistic value')
 ax.legend(loc='upper left')
 
@@ -368,7 +368,7 @@ for d in range(len(Y)):
     np.fill_diagonal(W,wtmat[d]) # diagonal matrix of weights
     out = wls(X_cp_nolag,Y,W)
     # return coefficient estimates and residuals
-    results[d,:] = out
+    results_nolag[d,:] = out
 
 coeffs_nolag = pd.DataFrame(results_nolag)
 if model == 'CAPM':
@@ -444,7 +444,7 @@ f.close()
 fig, ax = plt.subplots(figsize=(7,5))
 
 ax.hist(taus,bins=15) 
-ax.set_title('Distribution of tau statistic under H0: beta(r_1) = 0 for all times t, ' + asset + ', ' + model)
+ax.set_title('Distribution of tau statistic under H0: phi = 0 for all times t, ' + asset + ', ' + model)
 ax.axvline(tau_hat, color='r', linestyle='dashed', linewidth=2,label='test statistic value')
 ax.legend(loc='upper left')
 

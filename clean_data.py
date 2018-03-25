@@ -62,8 +62,8 @@ def gen_X(data,asset,factor_model):
     if factor_model == 'FF3':
         factors = np.vstack([factors,data.loc[1:,'SMB'].values,data.loc[1:,'HML'].values])
 
-    # lag-one return 
-    X = np.vstack([factors,data.loc[:len(data)-2,asset].values])
+    # lag-one excess return 
+    X = np.vstack([factors,np.subtract(data.loc[:len(data)-2,asset].values,data.loc[:len(data)-2,'RF'].values)])
     
     # make matrix and return
     X = np.matrix(X).T

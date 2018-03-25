@@ -87,7 +87,7 @@ def gen_recursive(hypothesis,X,r_0,resids,coeffs,factor_model='CAPM'):
         
         r_star[row] = current_r
     
-    # return recursively-generated returns and new lagged return column
+    # return recursively-generated excess returns and new lagged return column
     Y_star = np.matrix(r_star).T
     X_star = np.matrix([r_0] + r_star[:len(r_star)-1]).T
     
