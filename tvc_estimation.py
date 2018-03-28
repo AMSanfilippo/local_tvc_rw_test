@@ -60,7 +60,7 @@ def ols(X,Y):
 
 data = clean_data('19940101','20031230') 
 
-asset = 'Durbl'
+asset = 'Other'
 model = 'CAPM' # 'FF3'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -119,6 +119,9 @@ results = pd.Series(cv_mses,index=test_bandwidths)
 results.to_csv('output/' + asset + '/loocv_' + model + '.csv')
 
 h = results[results==min(results)].index[0] # optimal bandwidth
+
+# h for different assets:
+# Shops: 0.026
 
 ###############################################################################
 
@@ -350,7 +353,7 @@ ax.axvline(tau_hat, color='r', linestyle='dashed', linewidth=2,label='test stati
 ax.legend(loc='upper left')
 
 #plt.show()
-plt.savefig('figures/' + asset + '/tau_hist_' + model +'.jpg')
+plt.savefig('figures/' + asset + '/tau_hist_01_' + model +'.jpg')
 
 sum(taus > tau_hat) # 0. reject H0.
 
@@ -449,7 +452,7 @@ ax.axvline(tau_hat, color='r', linestyle='dashed', linewidth=2,label='test stati
 ax.legend(loc='upper left')
 
 #plt.show()
-plt.savefig('figures/' + asset + '/tau_hist_' + model +'.jpg')
+plt.savefig('figures/' + asset + '/tau_hist_02_' + model +'.jpg')
 
 sum(taus > tau_hat) # 0. reject H0.
 
