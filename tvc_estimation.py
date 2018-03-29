@@ -60,7 +60,7 @@ def ols(X,Y):
 
 data = clean_data('19940101','20031230') 
 
-asset = 'Mom   '
+asset = 'Hlth '
 model = 'CAPM' # 'FF3'
 
 # test CAPM specification, assuming lag-one AR in returns
