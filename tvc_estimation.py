@@ -60,7 +60,7 @@ def ols(X,Y):
 
 data = clean_data('19940101','20031230') 
 
-asset = 'Other'
+asset = 'Mom   '
 model = 'CAPM' # 'FF3'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -294,7 +294,7 @@ ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Excess returns and OLS fitted values, ' + asset + ', ' + model)
 
 #plt.show()
-plt.savefig('figures/' + asset + '/fitted_' + model + '.jpg')
+plt.savefig('figures/' + asset + '/fitted_ols_' + model + '.jpg')
 
 null_resids = get_residuals('null',X,Y)['resids']
 
