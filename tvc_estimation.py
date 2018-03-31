@@ -58,10 +58,12 @@ def ols(X,Y):
 
 ###############################################################################
 
-data = clean_data('19940101','20031230') 
+data = clean_data('19940101','20031230')
 
-asset = 'Hlth '
-model = 'CAPM' # 'FF3'
+###############################################################################
+
+asset = 'Telcm'
+model = 'FF3' # 'CAPM'
 
 # test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,model)
@@ -78,7 +80,7 @@ normalized_datelist = np.divide(range(len(Y)),len(Y))
 # note: assume normalized_datelist defined as above
 # normalized_datelist = np.divide(range(len(Y)),len(Y))
 
-test_bandwidths = list(np.divide(range(1,26),500)) # list of bandwidths to test
+test_bandwidths = list(np.divide(range(1,41),500)) # list of bandwidths to test
 # (tbh the optimal bandwidth will never be above 0.05 so why bother checking.)
 
 X_cp = X.copy()
@@ -197,8 +199,8 @@ line1, = ax.plot(x, coeffs['const'].values, color='r',label='constant (alpha)')
 line2, = ax.plot(x, coeffs['rm_rf'].values, color='g',label='market return')
 line3, = ax.plot(x, coeffs['r_1'].values, color='b',label='lag-one return')
 if model == 'FF3':
-    line4, = ax.plot(x, coeffs['smb'].values, color='o',label='size factor')
-    line5, = ax.plot(x, coeffs['hml'].values, color='b',label='value factor')
+    line4, = ax.plot(x, coeffs['smb'].values, color='y',label='size factor')
+    line5, = ax.plot(x, coeffs['hml'].values, color='c',label='value factor')
 line6, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
     
 ax.legend(loc='lower left')

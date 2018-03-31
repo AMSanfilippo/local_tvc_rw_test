@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2017.5.23)  28 MAR 2018 17:12
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2017.5.23)  29 MAR 2018 12:15
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -78,80 +78,7 @@ Package caption3 Info: TeX engine: e-TeX on input line 67.
 \c@subfigure=\count89
 \c@subtable=\count90
 )
-(./pointwise_CIs.aux
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-
-LaTeX Warning: Label `fig:2' multiply defined.
-
-
-LaTeX Warning: Label `sub@fig:2' multiply defined.
-
-)
+No file pointwise_CIs.aux.
 \openout1 = `pointwise_CIs.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 5.
@@ -166,7 +93,7 @@ LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 5.
 LaTeX Font Info:    ... okay on input line 5.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 5.
 LaTeX Font Info:    ... okay on input line 5.
- (/usr/local/texlive/2017/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+(/usr/local/texlive/2017/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count91
 \scratchdimen=\dimen112
@@ -333,28 +260,21 @@ File: Other/pointwiseCIs_CAPM.jpg Graphic file (type jpg)
 <use Other/pointwiseCIs_CAPM.jpg>
 Package pdftex.def Info: Other/pointwiseCIs_CAPM.jpg used on input line 92.
 (pdftex.def)             Requested size: 172.5pt x 86.24606pt.
-File: Telcm/pointwiseCIs_CAPM.jpg Graphic file (type jpg)
- <use Telcm/pointwiseCIs_CAPM.jpg>
-Package pdftex.def Info: Telcm/pointwiseCIs_CAPM.jpg used on input line 99.
-(pdftex.def)             Requested size: 172.5pt x 86.24606pt.
-File: Utils/pointwiseCIs_CAPM.jpg Graphic file (type jpg)
 
-<use Utils/pointwiseCIs_CAPM.jpg>
-Package pdftex.def Info: Utils/pointwiseCIs_CAPM.jpg used on input line 106.
+<Mom/pointwiseCIs_CAPM.jpg, id=13, 722.7pt x 361.35pt>
+File: Mom/pointwiseCIs_CAPM.jpg Graphic file (type jpg)
+
+<use Mom/pointwiseCIs_CAPM.jpg>
+Package pdftex.def Info: Mom/pointwiseCIs_CAPM.jpg used on input line 99.
 (pdftex.def)             Requested size: 172.5pt x 86.24606pt.
 
-Overfull \hbox (2.22221pt too wide) in paragraph at lines 69--110
+Overfull \hbox (2.22221pt too wide) in paragraph at lines 69--103
 [][] []
  []
 
 
-Overfull \hbox (2.22221pt too wide) in paragraph at lines 69--110
+Overfull \hbox (2.22221pt too wide) in paragraph at lines 69--103
 [] []
- []
-
-
-Overfull \hbox (2.22221pt too wide) in paragraph at lines 69--110
-[] [] 
  []
 
 [1{/usr/local/texlive/2017/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./Bus
@@ -362,26 +282,26 @@ Eq/pointwiseCIs_CAPM.jpg> <./Chems/pointwiseCIs_CAPM.jpg> <./Durbl/pointwiseCIs
 _CAPM.jpg> <./Enrgy/pointwiseCIs_CAPM.jpg> <./Manuf/pointwiseCIs_CAPM.jpg> <./N
 oDur/pointwiseCIs_CAPM.jpg> <./Telcm/pointwiseCIs_CAPM.jpg> <./Utils/pointwiseC
 Is_CAPM.jpg>] [2 <./Shops/pointwiseCIs_CAPM.jpg> <./Hlth/pointwiseCIs_CAPM.jpg>
- <./Money/pointwiseCIs_CAPM.jpg> <./Other/pointwiseCIs_CAPM.jpg>]
-(./pointwise_CIs.aux)
+ <./Money/pointwiseCIs_CAPM.jpg> <./Other/pointwiseCIs_CAPM.jpg> <./Mom/pointwi
+seCIs_CAPM.jpg>] (./pointwise_CIs.aux)
 
-LaTeX Warning: There were multiply-defined labels.
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
  ) 
 Here is how much of TeX's memory you used:
- 2657 strings out of 492995
- 43317 string characters out of 6132704
- 103468 words of memory out of 5000000
- 6207 multiletter control sequences out of 15000+600000
+ 2660 strings out of 492995
+ 43408 string characters out of 6132704
+ 103395 words of memory out of 5000000
+ 6211 multiletter control sequences out of 15000+600000
  3939 words of font info for 15 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  42i,7n,40p,257b,440s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb>
 </usr/local/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb>
-Output written on pointwise_CIs.pdf (2 pages, 800477 bytes).
+Output written on pointwise_CIs.pdf (2 pages, 891222 bytes).
 PDF statistics:
- 31 PDF objects out of 1000 (max. 8388607)
+ 32 PDF objects out of 1000 (max. 8388607)
  12 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 61 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 66 words of extra memory for PDF output out of 10000 (max. 10000000)
 

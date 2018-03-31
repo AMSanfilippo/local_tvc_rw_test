@@ -1,0 +1,20 @@
+PRELIMINARY RESULTS, CAPM:
+-All assets reject H0: all coefficients time-invariant. (Money close to failing: p = 0.04)
+-9/12 industries reject H0: (all coefficients time-varying and) phi = 0 for all t. Chemicals, energy and health fail to reject.
+-4 (almost 5) industries show phi significantly > 0 during the approximately 2000 - 2002 period: Energy, telecommunications, utilities, shops, (manufacturing)
+	There doesn't appear to be a strong cyclical/defensive relationship here (since energy, telecom (?), utilities are defensive and others are cyclical)
+	Phi appears most significantly different from zero in telecom and shops
+	(Interesting that energy shows significant positive phi but fails to reject H0 in the test for phi = 0 over all t. This doesn't look great.)
+	*To do: look at what returns actually DID during this time period: e.g. we'd expect telecom to be having negative returns
+-4 industries show phi significantly < 0 during the approximately 2000 - 2004 period: business equipment, chemicals, consumer durables, consumer nondurables
+	This would be a harder returns generating process to bet on/against, since it implies lots of volatility
+	*To do: look at what returns actually DID during this time period; i.e. did they appear more choppy than for the assets above?
+*Also to-do: keep some track of the optimal bandwidths for each asset
+
+Next steps: robustness checks in FF3, FF5
+-Do the above results hold under a different returns generating process? To what extent?
+	*Useful things to consider: 
+	--graphs which overlay the point estimates/CIs for phi in different specifications: do these look relatively consistent? --> would suggest robustness to returns specification
+	--compare results of specification tests: same suggests robustness to returns specification
+
+

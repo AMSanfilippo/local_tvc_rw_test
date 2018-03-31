@@ -26,7 +26,7 @@ def get_residuals(hypothesis,X,Y,coeffs=pd.DataFrame(),factor_model='CAPM'):
         fit_r_1 = np.array([0]*len(X))
         
         # if time-varying specification includes lagged return variable
-        if len(X.T) >= 3:
+        if (len(X.T) == 3 and factor_model == 'CAPM') or (len(X.T) == 5 and factor_model == 'FF3'):
             # lag-one return component of fitted values
             fit_r_1 = np.multiply(np.array(X[:,-1].T)[0],coeffs['r_1'].values) 
     
