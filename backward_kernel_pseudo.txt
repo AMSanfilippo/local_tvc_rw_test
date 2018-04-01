@@ -1,0 +1,9 @@
+# to implement rolling regression with window size X
+
+results = np.asmatrix(np.zeros((len(X),len(X.T)))) # hold results of backward-looking regression, uniform kernel
+
+for t in times[X:]: # for all times at least X periods into the sample
+	X_sub = X[t-X:t+1,:] # sub-matrix consisting only of the past X periods
+	Y_sub = Y[t-x:t+1] # sub-matrix consisting only of the past X periods
+	out = np.linalg.solve((X_sub.T).dot(X_sub),(X_sub.T).dot(Y_sub)) # coefficient estimates for time t
+	results[t,:] = out

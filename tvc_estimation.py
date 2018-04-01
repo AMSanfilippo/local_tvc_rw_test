@@ -62,7 +62,7 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Telcm'
+asset = 'Money'
 model = 'FF3' # 'CAPM'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -80,7 +80,7 @@ normalized_datelist = np.divide(range(len(Y)),len(Y))
 # note: assume normalized_datelist defined as above
 # normalized_datelist = np.divide(range(len(Y)),len(Y))
 
-test_bandwidths = list(np.divide(range(1,41),500)) # list of bandwidths to test
+test_bandwidths = list(np.divide(range(1,26),500)) # list of bandwidths to test
 # (tbh the optimal bandwidth will never be above 0.05 so why bother checking.)
 
 X_cp = X.copy()
