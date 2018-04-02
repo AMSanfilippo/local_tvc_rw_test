@@ -26,18 +26,26 @@ def get_residuals(hypothesis,X,Y,coeffs=pd.DataFrame(),factor_model='CAPM'):
         fit_r_1 = np.array([0]*len(X))
         
         # if time-varying specification includes lagged return variable
-        if (len(X.T) == 3 and factor_model == 'CAPM') or (len(X.T) == 5 and factor_model == 'FF3'):
+        if (len(X.T) == 3 and factor_model == 'CAPM') or (len(X.T) == 5 and factor_model == 'FF3') or (len(X.T) == 7 and factor_model == 'FF5'):
             # lag-one return component of fitted values
             fit_r_1 = np.multiply(np.array(X[:,-1].T)[0],coeffs['r_1'].values) 
     
         fit_smb = np.array([0]*len(X))
         fit_hml = np.array([0]*len(X))
+        fit_rmw = np.array([0]*len(X))
+        fit_cma = np.array([0]*len(X))
     
         if factor_model == 'FF3':
             fit_smb = np.multiply(np.array(X[:,2].T)[0],coeffs['smb'].values) 
             fit_hml = np.multiply(np.array(X[:,3].T)[0],coeffs['hml'].values)
+            
+        if factor_model == 'FF5':
+            fit_smb = np.multiply(np.array(X[:,2].T)[0],coeffs['smb'].values) 
+            fit_hml = np.multiply(np.array(X[:,3].T)[0],coeffs['hml'].values)
+            fit_rmw = np.multiply(np.array(X[:,4].T)[0],coeffs['rmw'].values) 
+            fit_cma = np.multiply(np.array(X[:,5].T)[0],coeffs['cma'].values)
     
-        fitted = np.add(np.add(np.add(np.add(fit_const,fit_rmrf),fit_r_1),fit_smb),fit_hml)
+        fitted = np.add(np.add(np.add(np.add(np.add(np.add(fit_const,fit_rmrf),fit_r_1),fit_smb),fit_hml),fit_rmw),fit_cma)
     
     if hypothesis == 'null':
         fitted = np.array((X.dot(np.linalg.solve((X.T).dot(X),(X.T).dot(Y)))).T)[0]
@@ -79,11 +87,15 @@ def gen_recursive(hypothesis,X,r_0,resids,coeffs,factor_model='CAPM'):
             current_r = np.add(np.add(np.add(coeffs.loc[row,'const'],np.multiply(coeffs.loc[row,'rm_rf'],X[row,1])),np.multiply(coeffs.loc[row,'r_1'],lagged_r)),resids[row])
             if factor_model == 'FF3':
                 current_r = np.add(np.add(current_r,np.multiply(coeffs.loc[row,'smb'],X[row,2])),np.multiply(coeffs.loc[row,'hml'],X[row,3]))
+            if factor_model == 'FF5':
+                current_r = np.add(np.add(np.add(np.add(current_r,np.multiply(coeffs.loc[row,'smb'],X[row,2])),np.multiply(coeffs.loc[row,'hml'],X[row,3])),np.multiply(coeffs.loc[row,'rmw'],X[row,4])),np.multiply(coeffs.loc[row,'cma'],X[row,5]))
     
         if hypothesis == 'null':
             current_r = np.add(np.add(np.add(coeffs[0],np.multiply(coeffs[1],X[row,1])),np.multiply(coeffs[-1],lagged_r)),resids[row])
             if factor_model == 'FF3':
                 current_r = np.add(np.add(current_r,np.multiply(coeffs[2],X[row,2])),np.multiply(coeffs[3],X[row,3]))
+            if factor_model == 'FF5':
+                current_r = np.add(np.add(np.add(np.add(current_r,np.multiply(coeffs[2],X[row,2])),np.multiply(coeffs[3],X[row,3])),np.multiply(coeffs[4],X[row,4])),np.multiply(coeffs[5],X[row,5]))
         
         r_star[row] = current_r
     

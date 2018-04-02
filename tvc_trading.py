@@ -22,7 +22,7 @@ data = clean_data('19940101','20031230')
 ###############################################################################
 
 asset = 'Telcm'
-model = 'CAPM' # 'FF3' 
+model = 'FF3' # 'CAPM' 
 
 # test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,model)
@@ -30,7 +30,9 @@ X = gen_X(data,asset,model)
 # X = gen_X(data,asset,'FF3')
 Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T) # excess returns
 
-window = 75 # rolling window size in days
+###############################################################################
+
+window = 63 # 3-month rolling window. (tbh I don't know what to do with this.)
 
 ###############################################################################
 
@@ -105,7 +107,7 @@ myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Coefficient point estimates, ' + asset + ', ' + model)
 
-#plt.show()
+plt.show()
 plt.savefig('trading/' + asset + '/coeffs_' + model + '.jpg')
 
 ###############################################################################

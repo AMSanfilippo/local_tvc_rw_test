@@ -39,8 +39,12 @@ def clean_data(start_date,end_date):
     factors = pd.read_csv('F-F_Research_Data_Factors_daily.csv')
     factors = factors.rename(columns={'Unnamed: 0':'Date'})
     
+    five_factors = pd.read_csv('F-F_Research_data_5_Factors_daily.csv')
+    five_factors = five_factors.rename(columns={'Unnamed: 0':'Date'})
+    
     data = factors.merge(industry_ret,how='inner',on='Date')
     data = data.merge(momentum_ret,how='inner',on='Date')
+    data = data.merge(five_factors[['Date','RMW','CMA']],how='inner',on='Date')
     
     data['Date'] = [datetime.strptime(str(d),'%Y%m%d') for d in data['Date']]
     
@@ -61,6 +65,8 @@ def gen_X(data,asset,factor_model):
     factors = np.vstack([[1]*(len(data)-1),data.loc[1:,'Mkt-RF'].values])
     if factor_model == 'FF3':
         factors = np.vstack([factors,data.loc[1:,'SMB'].values,data.loc[1:,'HML'].values])
+    if factor_model == 'FF5':
+        factors = np.vstack([factors,data.loc[1:,'SMB'].values,data.loc[1:,'HML'].values,data.loc[1:,'RMW'].values,data.loc[1:,'CMA'].values])
 
     # lag-one excess return 
     X = np.vstack([factors,np.subtract(data.loc[:len(data)-2,asset].values,data.loc[:len(data)-2,'RF'].values)])

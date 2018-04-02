@@ -62,8 +62,8 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Money'
-model = 'FF3' # 'CAPM'
+asset = 'Durbl'
+model = 'FF5'
 
 # test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,model)
@@ -110,10 +110,9 @@ for h in test_bandwidths:
         wts_loocv = np.delete(wtmat_h[d],d) # this does NOT change wtmat
         np.fill_diagonal(W_loocv,wts_loocv)
         out_loocv = wls(X_loocv,Y_loocv,W_loocv) # coefficient estimates for time t, using all times s != t
-        sq_error = np.power(np.subtract(Y[d],np.dot(X_cp[d],out_loocv.T)),2)
+        sq_error = np.power(np.subtract(Y_cp[d],np.dot(X_cp[d],out_loocv.T)),2)
         sse = np.add(sse,sq_error)
     
-    # IMPORTANT: when would the smallest bandwidth NOT minimize this MSE??
     mse = np.array(np.divide(sse,len(Y_cp)))[0] # loocv MSE with bandwidth = h
     cv_mses.append(mse[0]) 
 
@@ -121,9 +120,6 @@ results = pd.Series(cv_mses,index=test_bandwidths)
 results.to_csv('output/' + asset + '/loocv_' + model + '.csv')
 
 h = results[results==min(results)].index[0] # optimal bandwidth
-
-# h for different assets:
-# Shops: 0.026
 
 ###############################################################################
 
@@ -154,6 +150,8 @@ if model == 'CAPM':
     coeffs.columns = ['const','rm_rf','r_1']
 elif model == 'FF3':
     coeffs.columns = ['const','rm_rf','smb','hml','r_1']
+elif model == 'FF5':
+    coeffs.columns = ['const','rm_rf','smb','hml','rmw','cma','r_1']
     
 coeffs.to_csv('output/' + asset + '/nonparam_coeff_ests_' + model + '.csv')
 
@@ -201,7 +199,12 @@ line3, = ax.plot(x, coeffs['r_1'].values, color='b',label='lag-one return')
 if model == 'FF3':
     line4, = ax.plot(x, coeffs['smb'].values, color='y',label='size factor')
     line5, = ax.plot(x, coeffs['hml'].values, color='c',label='value factor')
-line6, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
+if model == 'FF5':
+    line4, = ax.plot(x, coeffs['smb'].values, color='y',label='size factor')
+    line5, = ax.plot(x, coeffs['hml'].values, color='c',label='value factor')
+    line6, = ax.plot(x, coeffs['rmw'].values, color='orange',label='profitability factor')
+    line7, = ax.plot(x, coeffs['cma'].values, color='purple',label='investment factor')
+line8, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
     
 ax.legend(loc='lower left')
 myFmt = mpld.DateFormatter('%Y-%m')
@@ -334,6 +337,8 @@ for i in range(B):
         bs_alt_est_coeffs.columns = ['const','rm_rf','r_1']
     elif model == 'FF3':
         bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','r_1']
+    elif model == 'FF5':
+        bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','rmw','cma','r_1']
         
     bs_alt_resids = get_residuals('alternative',X_cp,Y_recur,bs_alt_est_coeffs,model)['resids']
     bs_alt_rss = sum(np.power(bs_alt_resids.values,2))  
@@ -380,6 +385,8 @@ if model == 'CAPM':
     coeffs_nolag.columns = ['const','rm_rf']
 elif model == 'FF3':
     coeffs_nolag.columns = ['const','rm_rf','smb','hml']
+elif model == 'FF5':
+    coeffs_nolag.columns = ['const','rm_rf','smb','hml','rmw','cma']
     
 coeffs_nolag.to_csv('output/' + asset + '/nonparam_null_ests_' + model + '.csv')
 
@@ -431,6 +438,9 @@ for i in range(B):
     elif model == 'FF3':
         bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','r_1']
         bs_null_est_coeffs.columns = ['const','rm_rf','smb','hml']
+    elif model == 'FF5':
+        bs_alt_est_coeffs.columns = ['const','rm_rf','smb','hml','rmw','cma','r_1']
+        bs_null_est_coeffs.columns = ['const','rm_rf','smb','hml','rmw','cma']
         
     bs_alt_resids = get_residuals('alternative',X_cp_spec,Y_recur,bs_alt_est_coeffs,model)['resids']
     bs_alt_rss = sum(np.power(bs_alt_resids.values,2))  
