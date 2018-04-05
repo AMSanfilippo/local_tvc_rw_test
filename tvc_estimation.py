@@ -62,7 +62,7 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Durbl'
+asset = 'Enrgy'
 model = 'FF5'
 
 # test CAPM specification, assuming lag-one AR in returns
