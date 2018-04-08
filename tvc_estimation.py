@@ -62,7 +62,7 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Hlth '
+asset = 'Other'
 model = 'FF5'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -241,7 +241,7 @@ for i in range(B):
         
     r_1_bs[i] = results[:,-1]
 
-r_1_bs.to_csv('output/' + assets + '/bs_coeff_ests_' + model + '.csv')
+r_1_bs.to_csv('output/' + asset + '/bs_coeff_ests_' + model + '.csv')
     
 
 r_1_hat = coeffs['r_1'] # point estimates for lag-one coefficient
@@ -257,7 +257,7 @@ CI_lb = np.subtract(r_1_hat.values,me)
 CI_ub = np.add(r_1_hat.values,me)
 
 CI_df = pd.DataFrame({'lb':CI_lb,'pt_est':r_1_hat.values,'ub':CI_ub})
-CI_df.to_csv('output/' + assets + '/bs_coeff_CIs_' + model + '.csv')
+CI_df.to_csv('output/' + asset + '/bs_coeff_CIs_' + model + '.csv')
 
 # plot 95% pointwise CIs
 x = data.loc[1:,'Date']
@@ -274,7 +274,7 @@ ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('95% pointwise confidence intervals for coefficient on single-day lagged returns, ' + asset + ', ' + model)
 
 #plt.show()
-plt.savefig('figures/' + assets + '/pointwiseCIs_' + model + '.jpg')
+plt.savefig('figures/' + asset + '/pointwiseCIs_' + model + '.jpg')
 
 ###############################################################################
 
