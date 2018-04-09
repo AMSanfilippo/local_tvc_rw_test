@@ -21,8 +21,8 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Telcm'
-model = 'FF3' # 'CAPM' 
+asset = 'Money'
+model = 'FF5'
 
 # test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,model)
@@ -51,8 +51,10 @@ if model == 'CAPM':
     coeffs.columns = ['const','rm_rf','r_1']
 elif model == 'FF3':
     coeffs.columns = ['const','rm_rf','smb','hml','r_1']
+elif model == 'FF5':
+    coeffs.columns = ['const','rm_rf','smb','hml','rmw','cma','r_1']
     
-coeffs.to_csv('trading/' + asset + '/nonparam_coeff_ests_' + model + '.csv')
+coeffs.to_csv('output/' + asset + '/bwunif_nonparam_coeff_ests_' + model + '.csv')
 
 # fitted values from the estimation, starting {window} days in
 fitted = get_residuals('alternative',X[window:,:],Y[window:],coeffs,model)['fitted']
@@ -69,7 +71,8 @@ myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Excess returns and fitted values, ' + asset + ', ' + model)
 
-plt.show()
+#plt.show()
+plt.savefig('figures/' + asset + '/bwunif_fitted_' + model + '.jpg')
 
 # histogram of residuals
 resids = get_residuals('alternative',X[window:,:],Y[window:],coeffs,model)['resids']
@@ -79,7 +82,8 @@ fig, ax = plt.subplots(figsize=(7,5))
 ax.hist(resids.values,bins=100)
 ax.set_title('Histogram of residuals, ' + asset + ', ' + model)
 
-plt.show()
+#plt.show()
+plt.savefig('figures/' + asset + '/bwunif_resid_hist_' + model + '.jpg')
 
 # ts plot of residuals
 fig, ax = plt.subplots(figsize=(10,5))
@@ -89,7 +93,8 @@ myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Residuals, ' + asset + ', ' + model)
 
-plt.show()
+#plt.show()
+plt.savefig('figures/' + asset + '/bwunif_resid_ts_' + model + '.jpg')
 
 # ts plot of coefficient point estimates
 fig, ax = plt.subplots(figsize=(10,5))
@@ -100,15 +105,20 @@ line3, = ax.plot(x, coeffs['r_1'].values, color='b',label='lag-one return')
 if model == 'FF3':
     line4, = ax.plot(x, coeffs['smb'].values, color='y',label='size factor')
     line5, = ax.plot(x, coeffs['hml'].values, color='c',label='value factor')
-line6, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
+if model == 'FF5':
+    line4, = ax.plot(x, coeffs['smb'].values, color='y',label='size factor')
+    line5, = ax.plot(x, coeffs['hml'].values, color='c',label='value factor')
+    line6, = ax.plot(x, coeffs['rmw'].values, color='orange',label='profitability factor')
+    line7, = ax.plot(x, coeffs['cma'].values, color='purple',label='investment factor')
+line8, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
     
 ax.legend(loc='lower left')
 myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('Coefficient point estimates, ' + asset + ', ' + model)
 
-plt.show()
-plt.savefig('trading/' + asset + '/coeffs_' + model + '.jpg')
+#plt.show()
+plt.savefig('figures/' + asset + '/bwunif_coeffs_' + model + '.jpg')
 
 ###############################################################################
 
@@ -139,7 +149,7 @@ for i in range(B):
         
     r_1_bs[i] = results[window:,-1]
 
-# r_1_bs.to_csv('output/' + asset + '/bs_coeff_ests_' + model + '.csv')
+r_1_bs.to_csv('output/' + asset + '/bwunif_bs_coeff_ests_' + model + '.csv')
 
 r_1_hat = coeffs['r_1'] # point estimates for lag-one coefficient
 bs_sd = np.std(r_1_bs,axis=1,ddof=1)
@@ -154,7 +164,7 @@ CI_lb = np.subtract(r_1_hat.values,me)
 CI_ub = np.add(r_1_hat.values,me)
 
 CI_df = pd.DataFrame({'lb':CI_lb,'pt_est':r_1_hat.values,'ub':CI_ub})
-CI_df.to_csv('trading/' + asset + '/bs_coeff_CIs_' + model + '.csv')
+CI_df.to_csv('output/' + asset + '/bwunif_bs_coeff_CIs_' + model + '.csv')
 
 x = data.loc[window+1:,'Date']
 
@@ -169,8 +179,8 @@ myFmt = mpld.DateFormatter('%Y-%m')
 ax.xaxis.set_major_formatter(myFmt)
 ax.set_title('95% pointwise confidence intervals for coefficient on single-day lagged returns, ' + asset + ', ' + model)
 
-plt.show()
-plt.savefig('trading/' + asset + '/pointwiseCIs_' + model + '.jpg')
+#plt.show()
+plt.savefig('figures/' + asset + '/bwunif_pointwiseCIs_' + model + '.jpg')
 
 
 
