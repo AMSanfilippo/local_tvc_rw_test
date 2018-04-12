@@ -62,13 +62,10 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Other'
-model = 'FF5'
+asset = 'BusEq'
+model = 'CAPM'
 
-# test CAPM specification, assuming lag-one AR in returns
 X = gen_X(data,asset,model)
-# test FF3 specification, assuming lag-one AR in returns
-# X = gen_X(data,asset,'FF3')
 Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T) # excess returns
 
 # iterate through normalized dates
@@ -470,4 +467,363 @@ sum(taus > tau_hat) # 0. reject H0.
 
 
 ###############################################################################
+
+# generate code to shade plot where phi is significant
+def gen_axvspan(inds):
+    for i in range(len(inds) - 1):
+        start = inds[i]
+        end = inds[i+1]
+        if end - start == 1:
+            print('ax.axvspan(x.loc[' + str(start) + '],x.loc[' + str(end) + '], facecolor=\'grey\', alpha = 0.25)')
+  
+def sumstats_ofint(inds,rets):
+    stdevs = []
+    d1s = []
+    d2s = []
+    block_start = inds[0]
+    block_end = inds[0]
+    for i in range(len(inds) - 1):
+        start = inds[i]
+        end = inds[i+1]
+        if end - start == 1:
+            block_end = end
+            if (i+1) == (len(inds) - 1): # if last entry the list of indices
+                rets_ofint = rets[block_start:block_end+1]
+                stdevs.append(np.std(rets_ofint,ddof=1))
+                d1 = np.subtract(rets_ofint[1:],rets_ofint[:-1])
+                d1s.append(np.mean(d1))
+                if len(d1) > 1:
+                    d2 = np.subtract(d1[1:],d1[:-1])
+                    d2s.append(np.mean(d2))
+        else:
+            rets_ofint = rets[block_start:block_end+1]
+            if len(rets_ofint) > 1:
+                stdevs.append(np.std(rets_ofint,ddof=1))
+                d1 = np.subtract(rets_ofint[1:],rets_ofint[:-1])
+                d1s.append(np.mean(d1))
+                if len(d1) > 1:
+                    d2 = np.subtract(d1[1:],d1[:-1])
+                    d2s.append(np.mean(d2))
+            block_start = end
+            block_end = end
+    return [stdevs, d1s, d2s]
+        
+      
+###############################################################################
+
+# exploratory analysis: durbl
+
+asset = 'Durbl'
+model = 'CAPM'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+
+durbl_CIs = pd.read_csv('output/Durbl/bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+# date range where phi is significantly < 0
+inds = list(durbl_CIs[durbl_CIs.ub < 0].index)
+
+
+# FIGURE OUT SOME WAY TO MAKE THE BELOW ANALYSIS MORE READABLE
+
+# standard deviation of daily return during significant time periods
+sumstats_ofint(inds,Y)
+# FROM CAPM:
+# 1.5645 % daily volatility
+# -0.00064 % average daily delta return
+# 0.01013 % sq average daily 2nd derivative of return
+
+nonsig_inds = list(durbl_CIs[durbl_CIs.ub >= 0].index)
+sumstats_ofint(nonsig_inds,Y) 
+# FROM CAPM:
+# = 1.1153 % daily volatility before, 1.6574 % after
+# -0.00114 % average daily delta return, 0.000303 % after
+# -0.00005 % sq average daily 2nd derivative of return before, -0.0019 % sq after
+
+gen_axvspan(inds)
+
+# plot returns in this time period
+x = data.loc[inds[0]:inds[-1],'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, Y[inds[0]:(inds[-1]+1)], color='r',label='excess returns')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Excess returns where phi < 0, Durbl, ' + model)
+
+#plt.show()
+plt.savefig('figures/Durbl/returns_ofint_' + model + '.jpg')
+
+subsect_Y = Y[inds[0]:(inds[-1]+1)].copy()
+cumulative_rets = np.cumprod(np.add(np.divide(subsect_Y,100),1)).tolist()[0]
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, cumulative_rets, color='r',label='cumulative return')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns where phi < 0, Durbl' + model)
+
+#plt.show()
+plt.savefig('figures/Durbl/cumrets_ofint_' + model + '.jpg')
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Durbl, ' + model)
+
+#plt.show()
+plt.savefig('figures/Durbl/full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: telcm
+
+asset = 'Telcm'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+telcm_CIs = pd.read_csv('output/Telcm/bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+inds = list(telcm_CIs[telcm_CIs.lb > 0].index) 
+
+gen_axvspan(inds)
+
+x = data.loc[start_ind:end_ind,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, Y[start_ind:end_ind+1], color='r',label='excess returns')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Excess returns where phi > 0, Telcm, ' + model)
+#plt.show()
+plt.savefig('figures/Telcm/returns_ofint_' + model + '.jpg')
+
+subsect_Y = Y[start_ind:end_ind+1].copy()
+cumulative_rets = np.cumprod(np.add(np.divide(subsect_Y,100),1)).tolist()[0]
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, cumulative_rets, color='r',label='cumulative return')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns where phi > 0, Telcm, ' + model)
+
+#plt.show()
+plt.savefig('figures/Telcm/cumrets_ofint_' + model + '.jpg')
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Telcm, ' + model)
+
+#plt.show()
+plt.savefig('figures/Telcm/full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: buseq
+
+# NOTE: missing CAPM CIs (need to re-run this. RIP)
+
+asset = 'BusEq'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+buseq_CIs = pd.read_csv('output/BusEq/bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+inds = list(buseq_CIs[buseq_CIs.ub < 0].index)
+
+gen_axvspan(inds[:300])
+
+x = data.loc[start_ind:end_ind,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, Y[start_ind:end_ind+1], color='r',label='excess returns')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Excess returns where phi < 0, BusEq, ' + model)
+#plt.show()
+plt.savefig('figures/BusEq/returns_ofint_' + model + '.jpg')
+
+# plot cumulative returns in period of interest
+subsect_Y = Y[start_ind:end_ind+1].copy()
+cumulative_rets = np.cumprod(np.add(np.divide(subsect_Y,100),1)).tolist()[0]
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, cumulative_rets, color='r',label='cumulative return')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns where phi < 0, BusEq, ' + model)
+
+#plt.show()
+plt.savefig('figures/BusEq/cumrets_ofint_' + model + '.jpg')
+
+# full-period cumulative returns with shaded area where phi < 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, BusEq, ' + model)
+
+#plt.show()
+plt.savefig('figures/BusEq/full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: manuf
+
+asset = 'Manuf'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+manuf_CIs = pd.read_csv('output/Manuf/bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+inds = list(manuf_CIs[manuf_CIs.lb > 0].index)
+
+gen_axvspan(inds[:300])
+
+x = data.loc[start_ind:end_ind,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, Y[start_ind:end_ind+1], color='r',label='excess returns')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Excess returns where phi > 0, Manuf, ' + model)
+#plt.show()
+plt.savefig('figures/Manuf/returns_ofint_' + model + '.jpg')
+
+# plot cumulative returns in period of interest
+subsect_Y = Y[start_ind:end_ind+1].copy()
+cumulative_rets = np.cumprod(np.add(np.divide(subsect_Y,100),1)).tolist()[0]
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, cumulative_rets, color='r',label='cumulative return')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns where phi > 0, Manuf, ' + model)
+
+#plt.show()
+plt.savefig('figures/Manuf/cumrets_ofint_' + model + '.jpg')
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Manuf, ' + model)
+
+#plt.show()
+plt.savefig('figures/Manuf/full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: other
+
+asset = 'Other'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+other_CIs = pd.read_csv('output/Other/bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+inds = list(other_CIs[other_CIs.lb > 0].index)
+
+gen_axvspan(inds[:300])
+
+x = data.loc[start_ind:end_ind,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, Y[start_ind:end_ind+1], color='r',label='excess returns')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Excess returns where phi > 0, Other, ' + model)
+#plt.show()
+plt.savefig('figures/Other/returns_ofint_' + model + '.jpg')
+
+# plot cumulative returns in period of interest
+subsect_Y = Y[start_ind:end_ind+1].copy()
+cumulative_rets = np.cumprod(np.add(np.divide(subsect_Y,100),1)).tolist()[0]
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, cumulative_rets, color='r',label='cumulative return')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns where phi > 0, Other, ' + model)
+
+#plt.show()
+plt.savefig('figures/Other/cumrets_ofint_' + model + '.jpg')
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Other, ' + model)
+
+#plt.show()
+plt.savefig('figures/Other/full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# plot confidence intervals for symmetric and backward-facing estimation together
+asset = 'Other'
+model = 'FF5'
+sym_CIs = pd.read_csv('output/' + asset + '/bs_coeff_CIs_' + model + '.csv',index_col=0)
+bwf_CIs = pd.read_csv('output/' + asset + '/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+# plot 95% pointwise CIs, layered
+x = data.loc[64:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, sym_CIs.loc[63:,'lb'].values, dashes = [5,5], linewidth=1,color='b',label='confidence bound, symmetric kernel',alpha=0.33)
+line2, = ax.plot(x, sym_CIs.loc[63:,'ub'].values, dashes = [5,5], linewidth=1,color='b',alpha=0.33)
+line3, = ax.plot(x, sym_CIs.loc[63:,'pt_est'].values, linewidth=2, color='b',label='point estimate, symmetric kernel')
+line4, = ax.plot(x, bwf_CIs['lb'].values, dashes = [5,5], linewidth=1,color='r',label='confidence bound, backward kernel',alpha=0.33)
+line5, = ax.plot(x, bwf_CIs['ub'].values, dashes = [5,5], linewidth=1,color='r',alpha=0.33)
+line6, = ax.plot(x, bwf_CIs['pt_est'].values, linewidth=2, color='r',label='point estimate, backward kernel')
+line7, = ax.plot(x,[0]*len(x),dashes = [7,3],color='grey')
+ax.legend(loc='lower left')
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Comparison of pointwise confidence intervals for coefficient on single-day lagged returns, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/pointwiseCIs_layered_' + model + '.jpg')
+
+###############################################################################
+
+
 

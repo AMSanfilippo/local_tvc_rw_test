@@ -21,7 +21,7 @@ data = clean_data('19940101','20031230')
 
 ###############################################################################
 
-asset = 'Money'
+asset = 'Telcm'
 model = 'FF5'
 
 # test CAPM specification, assuming lag-one AR in returns
@@ -32,7 +32,7 @@ Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).
 
 ###############################################################################
 
-window = 63 # 3-month rolling window. (tbh I don't know what to do with this.)
+window = 63 # 3-month rolling window. (64 days)
 
 ###############################################################################
 
@@ -40,9 +40,10 @@ window = 63 # 3-month rolling window. (tbh I don't know what to do with this.)
 
 results = np.asmatrix(np.zeros((len(X),len(X.T))))
 
+# estimate coefficients from day 64 onwards
 for d in range(window,len(X)):
-	X_sub = X[d-window:d,:] # only observations within most recent time window
-	Y_sub = Y[d-window:d]
+	X_sub = X[d-window:d+1,:] # only observations within most recent time window
+	Y_sub = Y[d-window:d+1]
 	out = np.linalg.solve((X_sub.T).dot(X_sub),(X_sub.T).dot(Y_sub)) # coefficient estimates for time t
 	results[d,:] = out.T
 
@@ -182,11 +183,207 @@ ax.set_title('95% pointwise confidence intervals for coefficient on single-day l
 #plt.show()
 plt.savefig('figures/' + asset + '/bwunif_pointwiseCIs_' + model + '.jpg')
 
+###############################################################################
+
+# generate code to shade plot where phi is significant
+def gen_axvspan(inds):
+    for i in range(len(inds) - 1):
+        start = inds[i]
+        end = inds[i+1]
+        if end - start == 1:
+            print('ax.axvspan(x.loc[' + str(start) + '],x.loc[' + str(end) + '], facecolor=\'grey\', alpha = 0.25)')
+        
+###############################################################################
+
+# exploratory analysis: durbl
+
+asset = 'Durbl'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+durbl_CIs = pd.read_csv('output/Durbl/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+# date range where phi is significantly < 0
+inds = list(durbl_CIs[durbl_CIs.ub < 0].index)
+
+gen_axvspan(inds)
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Durbl, ' + model)
+
+#plt.show()
+plt.savefig('figures/Durbl/bwunif_full_cumrets_ofint_' + model + '.jpg')
 
 
+###############################################################################
 
+# exploratory analysis: telcm
 
+asset = 'Telcm'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+telcm_CIs = pd.read_csv('output/Telcm/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
 
+# date range where phi is significantly > 0
+inds = list(telcm_CIs[telcm_CIs.lb > 0].index)
+
+gen_axvspan(inds)
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Telcm, ' + model)
+
+#plt.show()
+plt.savefig('figures/Telcm/bwunif_full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: buseq
+
+asset = 'BusEq'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+buseq_CIs = pd.read_csv('output/BusEq/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+# date range where phi is significantly < 0
+inds = list(buseq_CIs[buseq_CIs.ub < 0].index)
+
+gen_axvspan(inds)
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, BusEq, ' + model)
+
+#plt.show()
+plt.savefig('figures/BusEq/bwunif_full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: manuf
+
+asset = 'Manuf'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+manuf_CIs = pd.read_csv('output/Manuf/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+# date range where phi is significantly > 0
+inds = list(manuf_CIs[manuf_CIs.lb > 0].index)
+
+gen_axvspan(inds)
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Manuf, ' + model)
+
+#plt.show()
+plt.savefig('figures/Manuf/bwunif_full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# exploratory analysis: other
+
+asset = 'Other'
+model = 'FF5'
+Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+other_CIs = pd.read_csv('output/Other/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
+
+# date range where phi is significantly > 0
+inds = list(other_CIs[other_CIs.lb > 0].index)
+
+gen_axvspan(inds)
+
+# full-period cumulative returns with shaded area where phi > 0
+full_cumulative_rets = np.cumprod(np.add(np.divide(Y.copy(),100),1)).tolist()[0]
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+line1, = ax.plot(x, full_cumulative_rets, color='r',label='cumulative return')
+# axvspan code goes here
+myFmt = mpld.DateFormatter('%Y-%m')
+ax.xaxis.set_major_formatter(myFmt)
+ax.set_title('Cumulative returns, Other, ' + model)
+
+#plt.show()
+plt.savefig('figures/Other/bwunif_full_cumrets_ofint_' + model + '.jpg')
+
+###############################################################################
+
+# test a trading strategy
+# use Telcm in CAPM, and consider the period during which phi > 0
+telcm_CI_ests = pd.read_csv('output/Telcm/bwunif_bs_coeff_CIs_CAPM.csv',index_col=0)
+telcm_coeffs = pd.read_csv('output/Telcm/bwunif_nonparam_coeff_ests_CAPM.csv',index_col=0)
+
+# test: first 20 days, from day 64 (index 63) thru day 83
+
+rets_to_test = [0] + (Y[63:83].copy()).flatten().tolist()[0]
+rf = np.divide(data.loc[62:82,'RF'].values,100)
+price = np.cumprod(np.add(np.divide(rets_to_test,100),1))
+borrowed = [1] + [0]*(len(rets_to_test)-1)
+sold = [0]*len(rets_to_test)
+position = ['long'] + ['']*(len(rets_to_test)-1)
+
+# at time 0: start out with $1 in the asset (borrowed)
+for i in range(1,len(rets_to_test)):
+    borrowed[i] = borrowed[i-1]*np.exp(rf[i])
+    sold[i] = sold[i-1]*np.exp(rf[i])
+    r_tp1 = np.add(telcm_coeffs.loc[62+i,'const'],np.multiply(telcm_coeffs.loc[62+i,'rm_rf'],data.loc[62+i,'Mkt-RF']))
+    # if we're 95% confident phi is positively significant:
+    r_tp1 += np.multiply((telcm_CI_ests.loc[62+i,'lb'] > 0),np.multiply(telcm_coeffs.loc[62+i,'r_1'],np.subtract(data.loc[62+i,'Telcm'],data.loc[62+i,'RF'])))
+    if r_tp1 > 0: # go long
+        position[i] = 'long'
+        if position[i-1] == 'short': # if not already long
+            diff_to_borrow = price[i] - sold[i]
+            if diff_to_borrow > 0: # if we need to borrow in order to make the purchase
+                sold[i] = 0 # use all of our money gained by short selling
+                borrowed[i] += diff_to_borrow # borrow the remainder rf
+            if diff_to_borrow <= 0:
+                sold[i] -= price[i] # use some of our money gained from short selling
+    if r_tp1 < 0: # go short
+        position[i] = 'short'
+        if position[i-1] == 'long': # if not already short
+            diff_to_invest = price[i] - borrowed[i]
+            if diff_to_invest > 0: # if we have extra money leftover from the sale
+                borrowed[i] = 0
+                sold[i] += diff_to_invest
+            if diff_to_invest <= 0:
+                borrowed[i] -= price[i] # pay off some of the borrowed amount
+    
+results = pd.DataFrame({'ret_pct':rets_to_test,'rf_rate':rf,'position':position,'price':price,'borrowed':borrowed,'sold':sold})
+# end result from trading strategy: owe $0.106692 in borrowed money.
+# end result from buy-and-hold: owe > $1.04847 in borrowed money, sell for $0.579301 so loss of $0.46918.
 
 
 
