@@ -342,55 +342,85 @@ plt.savefig('figures/Other/bwunif_full_cumrets_ofint_' + model + '.jpg')
 ###############################################################################
 
 # test a trading strategy
-# use Telcm in CAPM, and consider the period during which phi > 0
-telcm_CI_ests = pd.read_csv('output/Telcm/bwunif_bs_coeff_CIs_CAPM.csv',index_col=0)
-telcm_coeffs = pd.read_csv('output/Telcm/bwunif_nonparam_coeff_ests_CAPM.csv',index_col=0)
 
-# test: first 20 days, from day 64 (index 63) thru day 83
+def forecast_ret(i,data,coeffs,cis,asset,model,strategy):
+        forecast = np.add(coeffs.loc[i,'const'],np.multiply(coeffs.loc[i,'rm_rf'],data.loc[63+i,'Mkt-RF']))
+        if model == 'FF3':
+            forecast = np.add(forecast,np.multiply(coeffs.loc[i,'smb'],data.loc[63+i,'SMB']))
+            forecast = np.add(forecast,np.multiply(coeffs.loc[i,'hml'],data.loc[63+i,'HML']))
+        elif model == 'FF5':
+            forecast = np.add(forecast,np.multiply(coeffs.loc[i,'smb'],data.loc[63+i,'SMB']))
+            forecast = np.add(forecast,np.multiply(coeffs.loc[i,'hml'],data.loc[63+i,'HML']))
+            forecast = np.add(forecast,np.multiply(coeffs.loc[i,'rmw'],data.loc[63+i,'RMW']))
+            forecast = np.add(forecast,np.multiply(coeffs.loc[i,'cma'],data.loc[63+i,'CMA']))
+        if strategy == 'phi':
+            forecast += np.multiply((cis.loc[i,'lb'] > 0),np.multiply(coeffs.loc[i,'r_1'],np.subtract(data.loc[63+i,asset],data.loc[63+i,'RF'])))
+            forecast += np.multiply((cis.loc[i,'ub'] < 0),np.multiply(coeffs.loc[i,'r_1'],np.subtract(data.loc[63+i,asset],data.loc[63+i,'RF'])))
+        return forecast
 
-rets_to_test = [0] + (Y[63:83].copy()).flatten().tolist()[0]
-rf = np.divide(data.loc[62:82,'RF'].values,100)
-price = np.cumprod(np.add(np.divide(rets_to_test,100),1))
-borrowed = [1] + [0]*(len(rets_to_test)-1)
-sold = [0]*len(rets_to_test)
-position = ['long'] + ['']*(len(rets_to_test)-1)
+def simulate_strategy(Y,data,coeffs,cis,asset,model,strategy):
+    rets = [0] + (Y[63:].copy()).flatten().tolist()[0]
+    rf = np.divide(data.loc[62:2516,'RF'].values,100)
+    price = np.cumprod(np.add(np.divide(rets,100),1))
+    borrowed = [1] + [0]*(len(rets)-1)
+    sold = [0]*len(rets)
+    position = ['long'] + ['']*(len(rets)-1)
+    for i in range(len(coeffs)):
+        borrowed[i+1] = borrowed[i]*np.exp(rf[i+1])
+        sold[i+1] = sold[i]*np.exp(rf[i+1])
+        r_tp1 = forecast_ret(i,data,coeffs,cis,asset,model,strategy)
+        if r_tp1 > 0: # go long
+            position[i+1] = 'long'
+            if position[i] == 'short': # if not already long
+                diff_to_borrow = price[i+1] - sold[i+1]
+                if diff_to_borrow > 0: # if we need to borrow in order to make the purchase
+                    sold[i+1] = 0 # use all of our money gained by short selling
+                    borrowed[i+1] += diff_to_borrow # borrow the remainder rf
+                if diff_to_borrow <= 0:
+                    sold[i+1] -= price[i+1] # use some of our money gained from short selling
+        elif r_tp1 < 0: # go short
+            position[i+1] = 'short'
+            if position[i] == 'long': # if not already short
+                diff_to_invest = price[i+1] - borrowed[i+1]
+                if diff_to_invest > 0: # if we have extra money leftover from the sale
+                    borrowed[i+1] = 0
+                    sold[i+1] += diff_to_invest
+                if diff_to_invest <= 0:
+                    borrowed[i+1] -= price[i+1] # pay off some of the borrowed amount
+    results = pd.DataFrame({'ret_pct':rets,'rf_rate':rf,'position':position,'price':price,'borrowed':borrowed,'sold':sold})
+    buyhold = price[-1] - np.cumprod(np.exp(rf))[-1]
+    return [results,buyhold]
 
-# at time 0: start out with $1 in the asset (borrowed)
-for i in range(1,len(rets_to_test)):
-    borrowed[i] = borrowed[i-1]*np.exp(rf[i])
-    sold[i] = sold[i-1]*np.exp(rf[i])
-    r_tp1 = np.add(telcm_coeffs.loc[62+i,'const'],np.multiply(telcm_coeffs.loc[62+i,'rm_rf'],data.loc[62+i,'Mkt-RF']))
-    # if we're 95% confident phi is positively significant:
-    r_tp1 += np.multiply((telcm_CI_ests.loc[62+i,'lb'] > 0),np.multiply(telcm_coeffs.loc[62+i,'r_1'],np.subtract(data.loc[62+i,'Telcm'],data.loc[62+i,'RF'])))
-    if r_tp1 > 0: # go long
-        position[i] = 'long'
-        if position[i-1] == 'short': # if not already long
-            diff_to_borrow = price[i] - sold[i]
-            if diff_to_borrow > 0: # if we need to borrow in order to make the purchase
-                sold[i] = 0 # use all of our money gained by short selling
-                borrowed[i] += diff_to_borrow # borrow the remainder rf
-            if diff_to_borrow <= 0:
-                sold[i] -= price[i] # use some of our money gained from short selling
-    if r_tp1 < 0: # go short
-        position[i] = 'short'
-        if position[i-1] == 'long': # if not already short
-            diff_to_invest = price[i] - borrowed[i]
-            if diff_to_invest > 0: # if we have extra money leftover from the sale
-                borrowed[i] = 0
-                sold[i] += diff_to_invest
-            if diff_to_invest <= 0:
-                borrowed[i] -= price[i] # pay off some of the borrowed amount
+# make sure the correct data is loaded
+data = clean_data('19940101','20031230')
+strategy_results = pd.DataFrame({'buyhold_profit':[0]*3,'phi_profit':[0]*3,'pure_profit':[0]*3,},index = ['CAPM','FF3','FF5'])
+
+for model in ['CAPM','FF3','FF5']:
+    phi_profits = 0
+    pure_profits = 0
+    buyhold_profits = 0
     
-results = pd.DataFrame({'ret_pct':rets_to_test,'rf_rate':rf,'position':position,'price':price,'borrowed':borrowed,'sold':sold})
-# end result from trading strategy: owe $0.106692 in borrowed money.
-# end result from buy-and-hold: owe > $1.04847 in borrowed money, sell for $0.579301 so loss of $0.46918.
-
-
-
-
-
-
-
+    for asset in ['Durbl', 'Manuf','BusEq', 'Telcm','Other']:
+        cis = pd.read_csv('output/' + asset + '/bwunif_bs_coeff_CIs_' + model + '.csv',index_col=0)
+        coeffs = pd.read_csv('output/' + asset + '/bwunif_nonparam_coeff_ests_' + model + '.csv',index_col=0)
+        Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
+    
+        phi = simulate_strategy(Y,data,coeffs,cis,asset,model,'phi')
+        phi_result = phi[0]
+        pure = simulate_strategy(Y,data,coeffs,cis,asset,model,'pure')
+        pure_result = pure[0]
+        
+        phi_profit = (phi_result.loc[2454,'position'] == 'long')*phi_result.loc[2454,'price'] + phi_result.loc[2454,'sold'] - phi_result.loc[2454,'borrowed']
+        phi_profits += phi_profit
+        
+        pure_profit = (pure_result.loc[2454,'position'] == 'long')*pure_result.loc[2454,'price'] + pure_result.loc[2454,'sold'] - pure_result.loc[2454,'borrowed']
+        pure_profits += pure_profit
+        
+        buyhold_profits += pure[1]
+        
+    strategy_results.loc[model,'buyhold_profit'] = buyhold_profits
+    strategy_results.loc[model,'phi_profit'] = phi_profits
+    strategy_results.loc[model,'pure_profit'] = pure_profits
 
 
 

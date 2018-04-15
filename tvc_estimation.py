@@ -476,7 +476,8 @@ def gen_axvspan(inds):
         if end - start == 1:
             print('ax.axvspan(x.loc[' + str(start) + '],x.loc[' + str(end) + '], facecolor=\'grey\', alpha = 0.25)')
   
-def sumstats_ofint(inds,rets):
+def sumstats_ofint(inds,rets,sig_lev):
+    start_ends = []
     stdevs = []
     d1s = []
     d2s = []
@@ -488,6 +489,7 @@ def sumstats_ofint(inds,rets):
         if end - start == 1:
             block_end = end
             if (i+1) == (len(inds) - 1): # if last entry the list of indices
+                start_ends.append([block_start,block_end])
                 rets_ofint = rets[block_start:block_end+1]
                 stdevs.append(np.std(rets_ofint,ddof=1))
                 d1 = np.subtract(rets_ofint[1:],rets_ofint[:-1])
@@ -496,6 +498,7 @@ def sumstats_ofint(inds,rets):
                     d2 = np.subtract(d1[1:],d1[:-1])
                     d2s.append(np.mean(d2))
         else:
+            start_ends.append([block_start,block_end])
             rets_ofint = rets[block_start:block_end+1]
             if len(rets_ofint) > 1:
                 stdevs.append(np.std(rets_ofint,ddof=1))
@@ -506,7 +509,12 @@ def sumstats_ofint(inds,rets):
                     d2s.append(np.mean(d2))
             block_start = end
             block_end = end
-    return [stdevs, d1s, d2s]
+    for i in range(len(start_ends)):
+        if sig_lev == 's':
+            print('ax.hlines(' + str(stdevs[i]) + ', ' + str((start_ends[i][0])/len(rets)) + ', ' + str((start_ends[i][1])/len(rets)) + ', color=\'g\')')
+        elif sig_lev == 'ns':
+            print('ax.hlines(' + str(stdevs[i]) + ', ' + str((start_ends[i][0])/len(rets)) + ', ' + str((start_ends[i][1])/len(rets)) + ', color=\'b\')')
+    return [start_ends, stdevs, d1s, d2s]
         
       
 ###############################################################################
@@ -514,7 +522,7 @@ def sumstats_ofint(inds,rets):
 # exploratory analysis: durbl
 
 asset = 'Durbl'
-model = 'CAPM'
+model = 'FF5'
 Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
 
 durbl_CIs = pd.read_csv('output/Durbl/bs_coeff_CIs_' + model + '.csv',index_col=0)
@@ -522,22 +530,23 @@ durbl_CIs = pd.read_csv('output/Durbl/bs_coeff_CIs_' + model + '.csv',index_col=
 # date range where phi is significantly < 0
 inds = list(durbl_CIs[durbl_CIs.ub < 0].index)
 
-
-# FIGURE OUT SOME WAY TO MAKE THE BELOW ANALYSIS MORE READABLE
-
 # standard deviation of daily return during significant time periods
-sumstats_ofint(inds,Y)
-# FROM CAPM:
-# 1.5645 % daily volatility
-# -0.00064 % average daily delta return
-# 0.01013 % sq average daily 2nd derivative of return
+sumstats_ofint(inds,Y,'s')
 
 nonsig_inds = list(durbl_CIs[durbl_CIs.ub >= 0].index)
-sumstats_ofint(nonsig_inds,Y) 
-# FROM CAPM:
-# = 1.1153 % daily volatility before, 1.6574 % after
-# -0.00114 % average daily delta return, 0.000303 % after
-# -0.00005 % sq average daily 2nd derivative of return before, -0.0019 % sq after
+sumstats_ofint(nonsig_inds,Y,'ns') 
+
+# plot summary stats
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+ax.hlines(1.56458988072, 0.582042113627, 0.735399284863, color='g')
+ax.hlines(1.11435130276, 0.0, 0.572904251093, color='b')
+ax.hlines(1.59617554604, 0.789034564958, 0.999602701629, color='b')
+ax.set_title('Average daily standard deviation of returns, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/daily_stdev' + model + '.jpg')
 
 gen_axvspan(inds)
 
@@ -593,6 +602,32 @@ telcm_CIs = pd.read_csv('output/Telcm/bs_coeff_CIs_' + model + '.csv',index_col=
 
 inds = list(telcm_CIs[telcm_CIs.lb > 0].index) 
 
+# standard deviation of daily return during significant time periods
+sumstats_ofint(inds,Y,'s')
+
+nonsig_inds = list(telcm_CIs[telcm_CIs.lb <= 0].index)
+sumstats_ofint(nonsig_inds,Y,'ns') 
+
+# plot summary stats
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+ax.hlines(0.785164629226, 0.0305919745729, 0.0528406833532, color='g')
+ax.hlines(1.23763764535, 0.297576479936, 0.303933253874, color='g')
+ax.hlines(2.1099890275, 0.671831545491, 0.717520858164, color='g')
+ax.hlines(2.84657436874, 0.858164481526, 0.874851013111, color='g')
+ax.hlines(0.944258968716, 0.978943186333, 0.980135081446, color='g')
+ax.hlines(0.841642943186, 0.0, 0.0301946762018, color='b')
+ax.hlines(0.783344108161, 0.0532379817243, 0.297179181565, color='b')
+ax.hlines(1.38795854289, 0.304330552245, 0.67143424712, color='b')
+ax.hlines(1.73838179283, 0.717918156536, 0.857767183155, color='b')
+ax.hlines(1.80283724944, 0.875248311482, 0.978545887962, color='b')
+ax.hlines(0.682743907477, 0.980532379817, 0.999602701629, color='b')
+ax.set_title('Average daily standard deviation of returns, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/daily_stdev' + model + '.jpg')
+
 gen_axvspan(inds)
 
 x = data.loc[start_ind:end_ind,'Date']
@@ -638,14 +673,42 @@ plt.savefig('figures/Telcm/full_cumrets_ofint_' + model + '.jpg')
 
 # exploratory analysis: buseq
 
-# NOTE: missing CAPM CIs (need to re-run this. RIP)
-
 asset = 'BusEq'
-model = 'FF5'
+model = 'CAPM'
 Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).T)
 buseq_CIs = pd.read_csv('output/BusEq/bs_coeff_CIs_' + model + '.csv',index_col=0)
 
-inds = list(buseq_CIs[buseq_CIs.ub < 0].index)
+inds = list(buseq_CIs[buseq_CIs.lb < 0].index)
+
+# standard deviation of daily return during significant time periods
+sumstats_ofint(inds,Y,'s')
+
+nonsig_inds = list(buseq_CIs[buseq_CIs.ub >= 0].index)
+sumstats_ofint(nonsig_inds,Y,'ns') 
+
+# plot summary stats
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+ax.hlines(1.54295774804, 0.162892332141, 0.182359952324, color='g')
+ax.hlines(1.45151175065, 0.249503377036, 0.297576479936, color='g')
+ax.hlines(2.12862136189, 0.437028208184, 0.502185141041, color='g')
+ax.hlines(1.18932403771, 0.559793404847, 0.56098529996, color='g')
+ax.hlines(3.50923517026, 0.618593563766, 0.737385776718, color='g')
+ax.hlines(2.40444264736, 0.769169646404, 0.772348033373, color='g')
+ax.hlines(2.62312926032, 0.795788637267, 0.891140246325, color='g')
+ax.hlines(1.0684126631, 0.0, 0.16249503377, color='b')
+ax.hlines(1.48560048746, 0.182757250695, 0.249106078665, color='b')
+ax.hlines(1.55080634419, 0.297973778308, 0.436630909813, color='b')
+ax.hlines(2.0880660948, 0.502582439412, 0.559396106476, color='b')
+ax.hlines(1.88293210167, 0.561382598331, 0.618196265395, color='b')
+ax.hlines(2.40131871559, 0.737783075089, 0.768772348033, color='b')
+ax.hlines(2.51419912819, 0.772745331744, 0.795391338896, color='b')
+ax.hlines(1.61850538379, 0.891537544696, 0.999602701629, color='b')
+ax.set_title('Average daily standard deviation of returns, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/daily_stdev' + model + '.jpg')
 
 gen_axvspan(inds[:300])
 
@@ -700,6 +763,35 @@ manuf_CIs = pd.read_csv('output/Manuf/bs_coeff_CIs_' + model + '.csv',index_col=
 
 inds = list(manuf_CIs[manuf_CIs.lb > 0].index)
 
+# standard deviation of daily return during significant time periods
+sumstats_ofint(inds,Y,'s')
+
+nonsig_inds = list(manuf_CIs[manuf_CIs.lb <= 0].index)
+sumstats_ofint(nonsig_inds,Y,'ns') 
+
+# plot summary stats
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+ax.hlines(0.661417328002, 0.0, 0.0961462058006, color='g')
+ax.hlines(0.815149870987, 0.342471195868, 0.353198251887, color='g')
+ax.hlines(1.7835022272, 0.455303933254, 0.48708780294, color='g')
+ax.hlines(0.791487108636, 0.541914978149, 0.561779896702, color='g')
+ax.hlines(1.32508279438, 0.642828764402, 0.709972189114, color='g')
+ax.hlines(1.37521513142, 0.728247914184, 0.828764402066, color='g')
+ax.hlines(0.892282484433, 0.957091775924, 0.986094557012, color='g')
+ax.hlines(0.673046840344, 0.0965435041716, 0.342073897497, color='b')
+ax.hlines(1.01377470297, 0.353595550258, 0.454906634883, color='b')
+ax.hlines(1.0670885801, 0.487485101311, 0.541517679778, color='b')
+ax.hlines(1.45194482504, 0.562177195074, 0.642431466031, color='b')
+ax.hlines(1.59310550641, 0.710369487485, 0.727850615812, color='b')
+ax.hlines(1.51827508929, 0.829161700437, 0.956694477553, color='b')
+ax.hlines(0.8143215082, 0.986491855383, 0.999602701629, color='b')
+ax.set_title('Average daily standard deviation of returns, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/daily_stdev' + model + '.jpg')
+
 gen_axvspan(inds[:300])
 
 x = data.loc[start_ind:end_ind,'Date']
@@ -752,6 +844,26 @@ Y = (np.matrix(np.subtract(data.loc[1:,asset].values,data.loc[1:,'RF'].values)).
 other_CIs = pd.read_csv('output/Other/bs_coeff_CIs_' + model + '.csv',index_col=0)
 
 inds = list(other_CIs[other_CIs.lb > 0].index)
+
+# standard deviation of daily return during significant time periods
+sumstats_ofint(inds,Y,'s')
+
+nonsig_inds = list(other_CIs[other_CIs.lb <= 0].index)
+sumstats_ofint(nonsig_inds,Y,'ns') 
+
+# plot summary stats
+x = data.loc[1:,'Date']
+
+fig, ax = plt.subplots(figsize=(10,5))
+ax.hlines(0.549845027418, 0.0472785061581, 0.192689709972, color='g')
+ax.hlines(1.42920787203, 0.497417560588, 0.806912991657, color='g')
+ax.hlines(0.747762798785, 0.0, 0.046881207787, color='b')
+ax.hlines(0.976350931853, 0.193087008343, 0.497020262217, color='b')
+ax.hlines(1.58429359653, 0.807310290028, 0.999602701629, color='b')
+ax.set_title('Average daily standard deviation of returns, ' + asset + ', ' + model)
+
+#plt.show()
+plt.savefig('figures/' + asset + '/daily_stdev' + model + '.jpg')
 
 gen_axvspan(inds[:300])
 
